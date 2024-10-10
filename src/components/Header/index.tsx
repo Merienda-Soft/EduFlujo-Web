@@ -108,7 +108,7 @@ const Header = () => {
                     }`}
                   />
                 </button>
-                {!isLoading && user && ( // Solo mostrar el menú si el usuario está autenticado
+                {!isLoading && user && (
                   <nav
                     id="navbarCollapse"
                     className={`navbar absolute right-0 z-30 w-[250px] rounded border-[.5px] border-body-color/50 bg-white px-6 py-4 duration-300 dark:border-body-color/20 dark:bg-dark lg:visible lg:static lg:w-auto lg:border-none lg:!bg-transparent lg:p-0 lg:opacity-100 ${
@@ -177,7 +177,7 @@ const Header = () => {
               <div className="flex items-center justify-end pr-16 lg:pr-0">
                 {!isLoading && !user && (
                   <Link href="/api/auth/login" className="btn btn-primary">
-                    Log in
+                    Iniciar Sesion
                   </Link>
                 )}
                 {!isLoading && user && (
@@ -190,7 +190,7 @@ const Header = () => {
                       height="40"
                     />
                     <button onClick={handleLogout} className="btn btn-danger">
-                      Log out
+                      Cerrar Sesion
                     </button>
                   </div>
                 )}
