@@ -44,6 +44,9 @@ export async function POST(request) {
       password,
       name,
       connection: 'eduflujo',
+      user_metadata: {
+        temporaryPassword: password, 
+      },
     },
   };
 

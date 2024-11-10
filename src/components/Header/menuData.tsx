@@ -9,18 +9,24 @@ const menuData: Menu[] = [
   },
   {
     id: 2,
-    title: "Usuarios",
-    path: "/user",
+    title: "Cursos",
+    path: "/course",
     newTab: false,
   },
   {
     id: 3,
+    title: "Profesores",
+    path: "/user",
+    newTab: false,
+  },
+  {
+    id: 4,
     title: "Soporte",
     path: "/contact",
     newTab: false,
   },
   {
-    id: 4,
+    id: 5,
     title: "Pages",
     newTab: false,
     submenu: [

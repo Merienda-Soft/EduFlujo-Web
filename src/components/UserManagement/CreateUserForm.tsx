@@ -1,11 +1,20 @@
 "use client";
 import React, { useState } from 'react';
 import Swal from 'sweetalert2';
+import { createProfesor } from '../../utils/asignationService';
+
+const generateRandomPassword = (length = 10) => {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+};
 
 const CreateUserForm = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
@@ -13,11 +22,7 @@ const CreateUserForm = () => {
         e.preventDefault();
         setLoading(true);
 
-        if (password.length < 8) {
-            Swal.fire('Error', 'Password must be at least 8 characters', 'error');
-            setLoading(false);
-            return;
-        }
+        const password = generateRandomPassword();
 
         try {
             const response = await fetch('/api/users', {
@@ -28,22 +33,24 @@ const CreateUserForm = () => {
                 body: JSON.stringify({ name, email, password }),
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                Swal.fire('Success', 'Usuario Creado Exitosamente!', 'success', );
-                setName('');
-                setEmail('');
-                setPassword('');
-                setShowModal(false); 
-                
-                window.location.reload();
-            } else {
-                Swal.fire('Error', data.error || 'El usuario ya existe', 'error');
+            if (!response.ok) {
+                const data = await response.json();
+                Swal.fire('Error', data.error || 'Error al crear usuario en Auth0', 'error');
+                setLoading(false);
+                return;
             }
+
+            await createProfesor({ name, email });
+
+            Swal.fire('Success', 'Usuario y Profesor creados, contraseña enviada por email', 'success');
+            setName('');
+            setEmail('');
+            setShowModal(false);
+            window.location.reload();
+
         } catch (error) {
-            console.error('Error creating user:', error);
-            Swal.fire('Error', 'Error al crear el usuario, intente de nuevo', 'error');
+            console.error('Error en la creación del usuario y profesor o en el envío del correo:', error);
+            Swal.fire('Error', 'Error al crear usuario o profesor, o al enviar el correo', 'error');
         } finally {
             setLoading(false);
         }
@@ -88,18 +95,6 @@ const CreateUserForm = () => {
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
                                     placeholder="Correo"
-                                />
-                            </div>
-
-                            <div className="mb-4">
-                                <input
-                                    type="password"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    minLength={8}
-                                    placeholder="Contraseña"
                                 />
                             </div>
 
