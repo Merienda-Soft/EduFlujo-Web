@@ -4,6 +4,7 @@ import EditCourseModal from '../../components/Course/EditCourseModal';
 import AddCourseModal from '../../components/Course/AddCourseModal';
 import { useRouter } from 'next/navigation';
 import { deleteCourse } from '../../utils/courseService'; 
+import { httpRequestFactory } from '../../utils/HttpRequestFactory';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faEdit, faEye, faUserPlus } from '@fortawesome/free-solid-svg-icons';
 
@@ -35,12 +36,14 @@ const CoursesList = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
-      try {
-        const response = await fetch('http://localhost:3001/api/courses');
+      try { 
+        const { url, config } = httpRequestFactory.createRequest('/courses');
+        const response = await fetch(url, config);
+        if (!response.ok) throw new Error('Error al cargar los cursos');
         const data = await response.json();
         const activeCourses = data.filter((course: any) => course.deleted !== 1);
         setCourses(activeCourses);
-        filterCoursesByGrade(activeCourses, selectedGrade);  
+        filterCoursesByGrade(activeCourses, selectedGrade);
       } catch (err) {
         setError('Error al cargar los cursos');
       } finally {

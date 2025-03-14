@@ -1,6 +1,13 @@
 import axios from 'axios';
 
+let cachedToken = null;
+let tokenExpiration = null;
+
 export async function getAccessToken() {
+  if (cachedToken && tokenExpiration > Date.now()) {
+    return cachedToken;
+  }
+
   const options = {
     method: 'POST',
     url: `${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`,
@@ -15,7 +22,9 @@ export async function getAccessToken() {
 
   try {
     const response = await axios.request(options);
-    return response.data.access_token;
+    cachedToken = response.data.access_token;
+    tokenExpiration = Date.now() + (response.data.expires_in * 1000); 
+    return cachedToken;
   } catch (error) {
     console.error('Error obtaining access token', error);
     throw error;

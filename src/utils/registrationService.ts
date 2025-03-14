@@ -1,14 +1,17 @@
 import axios from 'axios';
+import { httpRequestFactory } from './HttpRequestFactory';
 
-const BASE_URL = 'http://localhost:3001/api/registration';
- 
-//Obteber todos los estudinates de un PDF
+//URL SERVICE PDF
+const SERVICE_PDF_URL = process.env.NEXT_PUBLIC_SERVICE_PDF_URL
+
+//UPLOAD PDF
+
 export const uploadPdf = async (file) => {
     const formData = new FormData();
     formData.append('pdf', file); 
   
     try {
-      const response = await axios.post('http://127.0.0.1:5000/upload_pdf', formData, {
+      const response = await axios.post(SERVICE_PDF_URL, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -19,83 +22,77 @@ export const uploadPdf = async (file) => {
       throw error;
     }
   };
-
-// Obtener todas las inscripciones
-export const getInscripciones = async () => {
+  
+  // INSCRIPCIONES
+  
+  export const getInscripciones = async () => {
     try {
-        const response = await axios.get(BASE_URL);
-        return response.data;
+      const { url, config } = httpRequestFactory.createRequest('/registration');
+      const response = await fetch(url, config);
+      if (!response.ok) throw new Error('Error al obtener las inscripciones');
+      return await response.json();
     } catch (error) {
-        console.error('Error al obtener las inscripciones:', error);
-        throw error;
+      console.error('Error al obtener las inscripciones:', error);
+      throw error;
     }
-};
-
-// Obtener una inscripción por courseId
-export const getInscriptionsByCourseId = async (cursoId) => {
+  };
+  
+  export const getInscriptionsByCourseId = async (cursoId: string) => {
     try {
-        const response = await fetch(`http://localhost:3001/api/registration/curso/${cursoId}`);
-        if (!response.ok) throw new Error('Error al obtener las asignaciones para el curso');
-        return await response.json();
+      const { url, config } = httpRequestFactory.createRequest(`/registration/curso/${cursoId}`);
+      const response = await fetch(url, config);
+      if (!response.ok) throw new Error('Error al obtener las inscripciones para el curso');
+      return await response.json();
     } catch (error) {
-        console.error(error);
-        throw error;
+      console.error('Error al obtener las inscripciones por curso:', error);
+      throw error;
     }
-};
-
-// Crear una nueva inscripción
-export const createInscripcion = async (inscripcionData) => {
+  };
+  
+  export const createInscripcion = async (inscripcionData: any) => {
     try {
-      console.log(inscripcionData);
-      const response = await fetch(`http://localhost:3001/api/registration`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(inscripcionData),
-      });
+      const { url, config } = httpRequestFactory.createRequest('/registration', 'POST', inscripcionData);
+      const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al crear la inscripción');
       return await response.json();
     } catch (error) {
       console.error('Error al crear la inscripción:', error);
       throw error;
     }
-};  
-
-// Actualizar una inscripción
-export const updateInscripcion = async (id, inscripcionData) => {
+  };
+  
+  export const updateInscripcion = async (id: string, inscripcionData: any) => {
     try {
-        const response = await axios.put(`${BASE_URL}/${id}`, inscripcionData);
-        return response.data;
+      const { url, config } = httpRequestFactory.createRequest(`/registration/${id}`, 'PUT', inscripcionData);
+      const response = await fetch(url, config);
+      if (!response.ok) throw new Error('Error al actualizar la inscripción');
+      return await response.json();
     } catch (error) {
-        console.error(`Error al actualizar la inscripción con ID ${id}:`, error);
-        throw error;
+      console.error(`Error al actualizar la inscripción con ID ${id}:`, error);
+      throw error;
     }
-};
-
-// Eliminar una inscripción
-export const deleteInscripcion = async (id) => {
+  };
+  
+  export const deleteInscripcion = async (id: string) => {
     try {
-        const response = await axios.delete(`${BASE_URL}/${id}`);
-        return response.data;
+      const { url, config } = httpRequestFactory.createRequest(`/registration/${id}`, 'DELETE');
+      const response = await fetch(url, config);
+      if (!response.ok) throw new Error('Error al eliminar la inscripción');
+      return await response.json();
     } catch (error) {
-        console.error(`Error al eliminar la inscripción con ID ${id}:`, error);
-        throw error;
+      console.error(`Error al eliminar la inscripción con ID ${id}:`, error);
+      throw error;
     }
-};
-
-// Obtener estudiantes por curso y materia
-export const getStudentsByCourseAndSubject = async (courseId, subjectId) => {
+  };
+  
+  export const getStudentsByCourseAndSubject = async (courseId: string, subjectId: string) => {
     try {
-        const response = await axios.get(`${BASE_URL}/students`, {
-            params: {
-                courseid: courseId,
-                materiaid: subjectId
-            }
-        });
-        return response.data;
+      const { url, config } = httpRequestFactory.createRequest(`/registration/students?courseid=${courseId}&materiaid=${subjectId}`);
+      const response = await fetch(url, config);
+      if (!response.ok) throw new Error('Error al obtener estudiantes por curso y materia');
+      return await response.json();
     } catch (error) {
-        console.error('Error al obtener estudiantes por curso y materia:', error);
-        throw error;
+      console.error('Error al obtener estudiantes por curso y materia:', error);
+      throw error;
     }
-};
+  };

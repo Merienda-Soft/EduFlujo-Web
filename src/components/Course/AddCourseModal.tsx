@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal/Modal';
 import { getMaterias, createCourse } from '../../utils/courseService';
-import Swal from 'sweetalert2';  // Importa SweetAlert2
+import Swal from 'sweetalert2'; 
 
 const AddCourseModal = ({ show, onClose }: { show: boolean, onClose: () => void }) => {
   const [grade, setGrade] = useState('');  // Estado para el grado

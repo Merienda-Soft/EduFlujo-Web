@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Modal from '../Modal/Modal'; 
 import Swal from 'sweetalert2';
 import { updateMateriaState } from '../../utils/courseService'; 
+import { httpRequestFactory } from '../../utils/HttpRequestFactory'; 
 
 interface Subject {
   _id: string;
@@ -18,8 +19,13 @@ const ManageSubjectsModal = ({ show, onClose }: { show: boolean, onClose: () => 
   useEffect(() => {
     if (show) {
       setLoading(true);
-      fetch('http://localhost:3001/api/subjects') 
-        .then((res) => res.json())
+      const { url, config } = httpRequestFactory.createRequest('/subjects');
+
+      fetch(url, config)
+        .then((res) => {
+          if (!res.ok) throw new Error('Error al cargar las materias');
+          return res.json();
+        })
         .then((data) => {
           setSubjects(data);
           setLoading(false);

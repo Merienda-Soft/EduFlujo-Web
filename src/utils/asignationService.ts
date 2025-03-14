@@ -1,9 +1,11 @@
-const API_URL = 'http://localhost:3001/api/teachers'; 
+import { httpRequestFactory } from './HttpRequestFactory';
 
-// Obtener todos los profesores
+// PROFESORES
+
 export const getProfesores = async () => {
   try {
-    const response = await fetch(`${API_URL}`);
+    const { url, config } = httpRequestFactory.createRequest('/teachers');
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener los profesores');
     return await response.json();
   } catch (error) {
@@ -12,9 +14,10 @@ export const getProfesores = async () => {
   }
 };
 
-export const getProfesorById = async (id) => {
+export const getProfesorById = async (id: string) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`);
+    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener el profesor');
     return await response.json();
   } catch (error) {
@@ -23,9 +26,10 @@ export const getProfesorById = async (id) => {
   }
 };
 
-export const getProfesorByEmail = async (email) => {
+export const getProfesorByEmail = async (email: string) => {
   try {
-    const response = await fetch(`${API_URL}/email/${email}`);
+    const { url, config } = httpRequestFactory.createRequest(`/teachers/email/${email}`);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener el profesor por email');
     return await response.json();
   } catch (error) {
@@ -34,17 +38,10 @@ export const getProfesorByEmail = async (email) => {
   }
 };
 
-export const createProfesor = async (profesorData) => {
+export const createProfesor = async (profesorData: any) => {
   try {
-    console.log(profesorData)
-    const response = await fetch(`http://localhost:3001/api/teachers`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(profesorData),
-      
-    });
+    const { url, config } = httpRequestFactory.createRequest('/teachers', 'POST', profesorData);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al crear el profesor');
     return await response.json();
   } catch (error) {
@@ -53,15 +50,10 @@ export const createProfesor = async (profesorData) => {
   }
 };
 
-export const updateProfesor = async (id, profesorData) => {
+export const updateProfesor = async (id: string, profesorData: any) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(profesorData),
-    });
+    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`, 'PUT', profesorData);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al actualizar el profesor');
     return await response.json();
   } catch (error) {
@@ -70,11 +62,10 @@ export const updateProfesor = async (id, profesorData) => {
   }
 };
 
-export const deleteProfesor = async (id) => {
+export const deleteProfesor = async (id: string) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'DELETE',
-    });
+    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`, 'DELETE');
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al eliminar el profesor');
     return await response.json();
   } catch (error) {
@@ -83,12 +74,12 @@ export const deleteProfesor = async (id) => {
   }
 };
 
-
-const BASE_URL = 'http://localhost:3001/api/asignaciones';
+// ASIGNACIONES
 
 export const getAsignaciones = async () => {
   try {
-    const response = await fetch(`${BASE_URL}`);
+    const { url, config } = httpRequestFactory.createRequest('/asignaciones');
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener las asignaciones');
     return await response.json();
   } catch (error) {
@@ -97,9 +88,10 @@ export const getAsignaciones = async () => {
   }
 };
 
-export const getAsignacionesByCurso = async (cursoId) => {
+export const getAsignacionesByCurso = async (cursoId: string) => {
   try {
-    const response = await fetch(`${BASE_URL}/curso/${cursoId}`);
+    const { url, config } = httpRequestFactory.createRequest(`/asignaciones/curso/${cursoId}`);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener las asignaciones para el curso');
     return await response.json();
   } catch (error) {
@@ -108,16 +100,10 @@ export const getAsignacionesByCurso = async (cursoId) => {
   }
 };
 
-export const createAsignacion = async (asignacionData) => {
-  console.log(asignacionData)
+export const createAsignacion = async (asignacionData: any) => {
   try {
-    const response = await fetch(`${BASE_URL}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(asignacionData),
-    });
+    const { url, config } = httpRequestFactory.createRequest('/asignaciones', 'POST', asignacionData);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al crear la asignación');
     return await response.json();
   } catch (error) {
@@ -126,15 +112,10 @@ export const createAsignacion = async (asignacionData) => {
   }
 };
 
-export const updateAsignacion = async (id, asignacionData) => {
+export const updateAsignacion = async (id: string, asignacionData: any) => {
   try {
-    const response = await fetch(`${BASE_URL}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(asignacionData),
-    });
+    const { url, config } = httpRequestFactory.createRequest(`/asignaciones/${id}`, 'PUT', asignacionData);
+    const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al actualizar la asignación');
     return await response.json();
   } catch (error) {

@@ -1,6 +1,6 @@
 // app/course/[courseId]/page.tsx
 'use client';
-
+import { httpRequestFactory } from '../../../utils/HttpRequestFactory';
 import { useEffect, useState, useRef } from 'react';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -44,7 +44,8 @@ const CourseDetails = ({ params }: { params: { courseId: string } }) => {
     const fetchData = async () => {
       try {
         // Obtener datos del curso
-        const courseResponse = await fetch(`http://localhost:3001/api/courses/${courseId}`);
+        const { url: courseUrl, config: courseConfig } = httpRequestFactory.createRequest(`/courses/${courseId}`);
+        const courseResponse = await fetch(courseUrl, courseConfig);
         if (!courseResponse.ok) throw new Error('Error al cargar el curso');
         const courseData = await courseResponse.json();
         setCourse(courseData);
@@ -52,7 +53,8 @@ const CourseDetails = ({ params }: { params: { courseId: string } }) => {
         const profesoresData = await getProfesores();
         setProfesores(profesoresData);
 
-        const asignacionesResponse = await fetch(`http://localhost:3001/api/asignaciones/curso/${courseId}`);
+        const { url: asignacionesUrl, config: asignacionesConfig } = httpRequestFactory.createRequest(`/asignaciones/curso/${courseId}`);
+        const asignacionesResponse = await fetch(asignacionesUrl, asignacionesConfig);
         if (!asignacionesResponse.ok) throw new Error('Error al cargar asignaciones');
         const asignacionesData = await asignacionesResponse.json();
 
