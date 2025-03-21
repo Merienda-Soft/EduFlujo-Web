@@ -7,10 +7,11 @@ import { deleteCourse } from '../../utils/courseService';
 import { httpRequestFactory } from '../../utils/HttpRequestFactory';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faEdit, faEye, faUserPlus } from '@fortawesome/free-solid-svg-icons';
+import { managementGlobal } from '../../utils/globalState';
 
 const CoursesList = () => {
   const [showCourseModal, setShowCourseModal] = useState(false);  
-  const [showTeacherModal, setShowTeacherModal] = useState(false);  // Estado para manejar el modal de profesor
+  const [showTeacherModal, setShowTeacherModal] = useState(false);  
   const [courses, setCourses] = useState([]); 
   const [filteredCourses, setFilteredCourses] = useState([]); 
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,9 @@ const CoursesList = () => {
   const [selectedCourse, setSelectedCourse] = useState(null); 
   const [showEditModal, setShowEditModal] = useState(false); 
 
+  const currentYear = new Date().getFullYear();
+  const isCurrentYear = currentYear === managementGlobal.year;
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('selectedGrade', selectedGrade);
@@ -41,7 +45,8 @@ const CoursesList = () => {
         const response = await fetch(url, config);
         if (!response.ok) throw new Error('Error al cargar los cursos');
         const data = await response.json();
-        const activeCourses = data.filter((course: any) => course.deleted !== 1);
+        console.log("Global:", managementGlobal.year);
+        const activeCourses = data.filter((course: any) => course.deleted !== 1 && course.management === managementGlobal.year );
         setCourses(activeCourses);
         filterCoursesByGrade(activeCourses, selectedGrade);
       } catch (err) {
@@ -88,7 +93,7 @@ const CoursesList = () => {
           setCourses(updatedCourses);
           filterCoursesByGrade(updatedCourses, selectedGrade);
 
-          Swal.fire('Eliminado', 'El curso ha sido eliminado lógicamente.', 'success');
+          Swal.fire('Eliminado', 'El curso ha sido eliminado.', 'success');
         } catch (error) {
           Swal.fire('Error', 'Hubo un error al eliminar el curso.', 'error');
         }
@@ -96,15 +101,13 @@ const CoursesList = () => {
     });
   };
 
-  // Función para redirigir a la página de detalles del curso.
   const handleViewDetails = (courseId: string) => {
-    router.push(`/course/${courseId}`); // Navegación a la página de detalles del curso
+    router.push(`/course/${courseId}`); 
   };
 
-  // Función para manejar el clic del botón de agregar profesor
   const handleAddTeacher = (course: any) => {
-    setSelectedCourse(course); // Selecciona el curso actual para agregar profesor
-    setShowTeacherModal(true);  // Muestra el modal de agregar profesor
+    setSelectedCourse(course); 
+    setShowTeacherModal(true);  
   };
 
   if (loading) return <p>Cargando cursos...</p>;
@@ -134,12 +137,14 @@ const CoursesList = () => {
         </div>
 
         {/* Botón Ingresar cursos */}
-        <button
-          onClick={() => setShowCourseModal(true)}
-          className="px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-700"
-        >
-          Agregar Curso
-        </button>
+        {isCurrentYear && (
+          <button
+            onClick={() => setShowCourseModal(true)}
+            className="px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-700"
+          >
+            Agregar Curso
+          </button>
+        )}
       </div>
 
       {/* Lista de cursos filtrados */}
@@ -151,12 +156,12 @@ const CoursesList = () => {
               className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 relative"
             >
               {/* Botón de vista detalles */}
-              <button
+              {isCurrentYear && (<button
                 onClick={() => handleViewDetails(course._id)}
                 className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
               >
                 <FontAwesomeIcon icon={faEye} size="lg" />
-              </button>
+              </button>)}
 
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
@@ -172,32 +177,33 @@ const CoursesList = () => {
                 </ul>
               </div>
               {/* Footer con los botones de acciones */}
-              <div className="flex justify-end mt-6 space-x-2">
-                
-                {/* Botón de editar curso */}
-                <button
-                  onClick={() => handleEditCourse(course)}
-                  className="px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-800 transition duration-200 flex items-center space-x-2"
-                >
-                  <FontAwesomeIcon icon={faEdit} /> 
-                </button>
+              {isCurrentYear && (
+                <div className="flex justify-end mt-6 space-x-2">
+                  {/* Botón de editar curso */}
+                  <button
+                    onClick={() => handleEditCourse(course)}
+                    className="px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-800 transition duration-200 flex items-center space-x-2"
+                  >
+                    <FontAwesomeIcon icon={faEdit} /> 
+                  </button>
 
-                {/* Botón de eliminar curso */}
-                <button
-                  onClick={() => handleDeleteCourse(course._id)}
-                  className="px-4 py-2 bg-red-800 text-white rounded-md shadow-md hover:bg-red-700 transition duration-200 flex items-center space-x-2"
-                >
-                  <FontAwesomeIcon icon={faTrash} /> 
-                </button>
+                  {/* Botón de eliminar curso */}
+                  <button
+                    onClick={() => handleDeleteCourse(course._id)}
+                    className="px-4 py-2 bg-red-800 text-white rounded-md shadow-md hover:bg-red-700 transition duration-200 flex items-center space-x-2"
+                  >
+                    <FontAwesomeIcon icon={faTrash} /> 
+                  </button>
 
-                {/* Botón de agregar profesor */}
-                {/*<button
-                  onClick={() => handleAddTeacher(course)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md shadow-md hover:bg-green-500 transition duration-200 flex items-center space-x-2"
-                >
-                  <FontAwesomeIcon icon={faUserPlus} />
-                </button>*/}
-              </div>
+                  {/* Botón de agregar profesor */}
+                  {/*<button
+                    onClick={() => handleAddTeacher(course)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md shadow-md hover:bg-green-500 transition duration-200 flex items-center space-x-2"
+                  >
+                    <FontAwesomeIcon icon={faUserPlus} />
+                  </button>*/}
+                </div>
+              )}
             </div>
           ))
         ) : (

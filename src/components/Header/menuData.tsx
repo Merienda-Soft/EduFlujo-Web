@@ -1,6 +1,8 @@
 import { Menu } from '../../types/menu';
+import { getYearManagements } from '../../utils/managementService';
+import { managementGlobal } from '../../utils/globalState';
 
-const menuData: Menu[] = [
+let menuData: Menu[] = [
   {
     id: 1,
     title: "Home",
@@ -27,58 +29,47 @@ const menuData: Menu[] = [
   },
   {
     id: 5,
-    title: "Pages",
+    title: "Gestion",
     newTab: false,
-    submenu: [
-      {
-        id: 41,
-        title: "About Page",
-        path: "/about",
-        newTab: false,
-      },
-      {
-        id: 42,
-        title: "Contact Page",
-        path: "/contact",
-        newTab: false,
-      },
-      {
-        id: 43,
-        title: "Blog Grid Page",
-        path: "/blog",
-        newTab: false,
-      },
-      {
-        id: 44,
-        title: "Blog Sidebar Page",
-        path: "/blog-sidebar",
-        newTab: false,
-      },
-      {
-        id: 45,
-        title: "Blog Details Page",
-        path: "/blog-details",
-        newTab: false,
-      },
-      {
-        id: 46,
-        title: "Sign In Page",
-        path: "/signin",
-        newTab: false,
-      },
-      {
-        id: 47,
-        title: "Sign Up Page",
-        path: "/signup",
-        newTab: false,
-      },
-      {
-        id: 48,
-        title: "Error Page",
-        path: "/error",
-        newTab: false,
-      },
-    ],
+    submenu: [], // lista de gestiones
   },
 ];
-export default menuData;
+
+export const updateMenuDataWithManagements = async () => {
+  try {
+    const managements = await getYearManagements();
+    const managementSubmenu = managements.map((management: any) => ({
+      id: management._id,
+      title: management.year,
+      path: `/management/${management._id}`,
+      newTab: false,
+    }));
+
+    menuData = menuData.map((menu) => {
+      if (menu.id === 5) {
+        return {
+          ...menu,
+          submenu: managementSubmenu,
+        };
+      }
+      return menu;
+    });
+
+    menuData = menuData.map((menu) => {
+      if (menu.id === 5) {
+        return {
+          ...menu,
+          title: `Gestion: ${managementGlobal.year}`,
+        };
+      }
+      return menu;
+    });
+
+    return menuData;
+  } catch (error) {
+    console.error('Error updating menu data with managements:', error);
+    return menuData;
+  }
+};
+
+export { menuData };

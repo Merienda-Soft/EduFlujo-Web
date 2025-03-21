@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ThemeToggler from "./ThemeToggler";
-import menuData from "./menuData";
+import { menuData as initialMenuData, updateMenuDataWithManagements } from "./menuData";
 import { useUser } from "@auth0/nextjs-auth0/client"; // Importa Auth0
 import { destroyCookie } from 'nookies';
+import { setManagementGlobal } from '../../utils/globalState'; // Importar la función para actualizar la variable global
 
 const Header = () => {
   // Navbar toggle
@@ -47,6 +48,23 @@ const Header = () => {
 
     // Redirigir al endpoint de logout de Auth0
     window.location.href = '/api/auth/logout';
+  };
+
+  const [menuData, setMenuData] = useState(initialMenuData);
+
+  useEffect(() => {
+    const initializeMenuData = async () => {
+      const updatedMenuData = await updateMenuDataWithManagements();
+      setMenuData(updatedMenuData); // Actualizar el estado del menú
+    };
+
+    initializeMenuData();
+  }, []);
+
+  const handleSubmenuSelect = (title) => {
+    const year = title;
+    setManagementGlobal({ year });
+    window.location.reload(); 
   };
 
   return (
@@ -155,13 +173,13 @@ const Header = () => {
                                 }`}
                               >
                                 {menuItem.submenu.map((submenuItem, index) => (
-                                  <Link
-                                    href={submenuItem.path}
+                                  <label
                                     key={index}
-                                    className="block rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3"
+                                    onClick={() => handleSubmenuSelect(submenuItem.title)}
+                                    className="block rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3 cursor-pointer"
                                   >
                                     {submenuItem.title}
-                                  </Link>
+                                  </label>
                                 ))}
                               </div>
                             </>

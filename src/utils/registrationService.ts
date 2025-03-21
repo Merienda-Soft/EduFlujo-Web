@@ -49,17 +49,19 @@ export const uploadPdf = async (file) => {
     }
   };
   
-  export const createInscripcion = async (inscripcionData: any) => {
+  export const createInscripcion = async (inscripcionData) => {
+    console.log('Inscripcion Data:', inscripcionData);
     try {
       const { url, config } = httpRequestFactory.createRequest('/registration', 'POST', inscripcionData);
       const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al crear la inscripción');
-      return await response.json();
-    } catch (error) {
-      console.error('Error al crear la inscripción:', error);
-      throw error;
-    }
+       return await response.json();
+     } catch (error) {
+       console.error('Error al crear la inscripción:', error);
+       throw error;
+     }
   };
+  
   
   export const updateInscripcion = async (id: string, inscripcionData: any) => {
     try {
