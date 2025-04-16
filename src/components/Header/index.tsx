@@ -63,7 +63,7 @@ const Header = () => {
 
   const handleSubmenuSelect = (title) => {
     const year = title;
-    setManagementGlobal({ year });
+    setManagementGlobal({ id: 0, year }); 
     window.location.reload(); 
   };
 

@@ -9,7 +9,7 @@ const CourseClient = () => {
   const [showSubjectModal, setShowSubjectModal] = useState(false); 
   const [showManageSubjectsModal, setShowManageSubjectsModal] = useState(false); 
   const currentYear = new Date().getFullYear();
-  const isCurrentYear = currentYear === managementGlobal.year;
+  const isCurrentYear = currentYear === managementGlobal.year; 
 
   return (
     <div className="container mx-auto px-4 py-12">

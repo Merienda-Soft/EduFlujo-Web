@@ -39,9 +39,10 @@ export const updateMenuDataWithManagements = async () => {
   try {
     const managements = await getYearManagements();
     const managementSubmenu = managements.map((management: any) => ({
-      id: management._id,
-      title: management.year,
-      path: `/management/${management._id}`,
+      id: management.id,
+      title: management.management,
+      status: management.status,
+      path: `/management/${management.id}`,
       newTab: false,
     }));
 

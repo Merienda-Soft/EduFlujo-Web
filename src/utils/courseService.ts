@@ -2,9 +2,10 @@ import { httpRequestFactory } from './HttpRequestFactory';
 
 // CURSOS
 
-export const createCourse = async (courseData: { name: string; materias: string[] }) => {
+export const createCourse = async (courseData) => {
+  console.log("CourseData:", courseData);
   try {
-    const { url, config } = httpRequestFactory.createRequest('/courses', 'POST', courseData);
+    const { url, config } = httpRequestFactory.createRequest('/course', 'POST', courseData);
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -20,7 +21,7 @@ export const createCourse = async (courseData: { name: string; materias: string[
 
 export const getCourseById = async (id: string) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/courses/${id}`);
+    const { url, config } = httpRequestFactory.createRequest(`/course/${id}`);
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -34,9 +35,9 @@ export const getCourseById = async (id: string) => {
   }
 };
 
-export const updateCourse = async (courseId: string, courseData: { name: string; materias: string[] }) => {
+export const updateCourse = async (courseId: number, courseData) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/courses/${courseId}`, 'PUT', courseData);
+    const { url, config } = httpRequestFactory.createRequest(`/course/${courseId}`, 'PUT', courseData);
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -72,7 +73,7 @@ export const deleteCourse = async (id: string) => {
 
 export const getMaterias = async () => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/subjects');
+    const { url, config } = httpRequestFactory.createRequest('/subject');
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -88,7 +89,7 @@ export const getMaterias = async () => {
 
 export const createMateria = async (materiaData: { name: string }) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/subjects', 'POST', materiaData);
+    const { url, config } = httpRequestFactory.createRequest('/subject', 'POST', materiaData);
     const response = await fetch(url, config);
 
     if (!response.ok) {

@@ -17,7 +17,7 @@ const AboutSectionOne = () => {
   const handleButtonClick = async () => {
     try {
       const management = await getManagementNow();
-      if (management) {
+      if (Array.isArray(management) && management.length > 0){
         router.push(`/course`);
       } else {
         router.push(`/management`);

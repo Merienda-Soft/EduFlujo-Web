@@ -1,20 +1,22 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import Modal from '../Modal/Modal';  
-import { getMaterias, updateCourse } from '../../utils/courseService'; 
-import Swal from 'sweetalert2'; 
+import Modal from '../Modal/Modal';
+import { getMaterias, updateCourse } from '../../utils/courseService';
+import Swal from 'sweetalert2';
+import { managementGlobal } from '../../utils/globalState';
 
 interface Materia {
-  _id: string;
-  name: string;
-  status: number;
-  deleted: number;
+  id: string;
+  subject: string;
 }
 
 interface Course {
-  _id: string;
-  name: string;
-  materias: Materia[];
+  id: number;
+  course: string;
+  parallel: string;
+  degree_id: number;
+  degree: string;
+  subject_ids: number[];
 }
 
 interface EditCourseModalProps {
@@ -24,206 +26,167 @@ interface EditCourseModalProps {
 }
 
 const EditCourseModal: React.FC<EditCourseModalProps> = ({ show, onClose, course }) => {
-  const [grade, setGrade] = useState<string>('');  
-  const [parallel, setParallel] = useState<string>('');  
-  const [availableMaterias, setAvailableMaterias] = useState<Materia[]>([]);  
-  const [selectedMaterias, setSelectedMaterias] = useState<Materia[]>([]); 
-  const [loading, setLoading] = useState<boolean>(false);
+  const [availableMaterias, setAvailableMaterias] = useState<Materia[]>([]);
+  const [selectedMaterias, setSelectedMaterias] = useState<Materia[]>([]);
   const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Manejar la apertura y carga de datos cuando el modal se muestra
   useEffect(() => {
     if (show && course) {
-      const fetchAndSetMaterias = async () => {
+      const fetchMaterias = async () => {
         try {
-          const materias = await getMaterias();
-          const activeMaterias = materias.filter((materia: any) => materia.deleted === 0);
+          const allMaterias = await getMaterias();
 
-          const activeSelectedMaterias = course.materias.filter((materia: Materia) => materia.deleted === 0);
+          const selected = allMaterias.filter((m) =>
+            course.subject_ids.includes(Number(m.id))
+          );
+          const available = allMaterias.filter(
+            (m) => !course.subject_ids.includes(Number(m.id))
+          );
 
-          const [extractedGrade, parallelLetter] = course.name.split(' ');
-          setGrade(extractedGrade);
-          setParallel(parallelLetter);
-          setSelectedMaterias(activeSelectedMaterias);
-          const selectedMateriasIds = activeSelectedMaterias.map((m: Materia) => m._id);
-
-          const filteredMaterias = activeMaterias.filter((m) => !selectedMateriasIds.includes(m._id));
-          setAvailableMaterias(filteredMaterias);
+          setSelectedMaterias(selected);
+          setAvailableMaterias(available);
         } catch (err) {
-          setError('Error al cargar las materias');
+          setError('Error al cargar materias.');
         }
       };
 
-      fetchAndSetMaterias();
+      fetchMaterias();
     } else if (!show) {
-      // Limpieza del estado cuando se cierra el modal
-      setGrade('');
-      setParallel('');
-      setAvailableMaterias([]);
       setSelectedMaterias([]);
+      setAvailableMaterias([]);
       setError('');
     }
   }, [show, course]);
 
-  // Función para manejar el cambio en el grado
-  const handleGradeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setGrade(e.target.value);
-  };
-
-  // Función para manejar el cambio en el paralelo
-  const handleParallelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setParallel(e.target.value);
-  };
-
-  // Función para manejar la selección de materias
   const handleMateriaSelect = (materia: Materia) => {
-    setAvailableMaterias(prev => prev.filter(m => m._id !== materia._id));
+    setAvailableMaterias(prev => prev.filter(m => m.id !== materia.id));
     setSelectedMaterias(prev => [...prev, materia]);
   };
 
-  // Función para eliminar materias seleccionadas
   const handleMateriaRemove = (materia: Materia) => {
-    setSelectedMaterias(prev => prev.filter(m => m._id !== materia._id));
+    setSelectedMaterias(prev => prev.filter(m => m.id !== materia.id));
     setAvailableMaterias(prev => [...prev, materia]);
   };
 
-  // Manejar el envío del formulario para actualizar el curso
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Validar que el grado y paralelo estén seleccionados
-    if (!grade || !parallel) {
-      setError('Por favor, selecciona el grado y paralelo.');
-      setLoading(false);
-      return;
-    }
+    if (!course) return;
 
-    // Formar el nuevo nombre del curso
-    const updatedName = `${grade} ${parallel}`;
-
-    const courseData = {
-      name: updatedName,
-      materias: selectedMaterias.map((materia) => materia._id),
+    const body = {
+      course: course.course,
+      parallel: course.parallel.trim(),
+      degree_id: course.degree_id,
+      management_id: managementGlobal.id,
+      subject_ids: selectedMaterias.map((m) => Number(m.id)),
     };
 
     try {
-      await updateCourse(course._id, courseData);  // Llamada al servicio de actualización
-      // Usar SweetAlert2 para mostrar el mensaje de éxito y recargar la página
+      await updateCourse(course.id, body);
       Swal.fire({
-        title: 'Curso actualizado con éxito',
+        title: 'Curso actualizado',
         icon: 'success',
         confirmButtonText: 'OK',
       }).then(() => {
-        onClose();  
+        onClose();
         window.location.reload();
       });
     } catch (err) {
-      setError('Error al actualizar el curso');
+      setError('No se pudo actualizar el curso.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal show={show} onClose={onClose} title={`Editar Curso: ${course?.name}`}>
-      <form onSubmit={handleSubmit}>
-        {/* Grado y paralelo en la misma línea */}
-        <div className="mb-4 flex space-x-4">
-          <div className="w-1/2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Grado
-            </label>
-            <select
-              value={grade}
-              onChange={handleGradeChange}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
-              required
-            >
-              <option value="">Selecciona un grado</option>
-              <option value="Primero">Primero</option>
-              <option value="Segundo">Segundo</option>
-              <option value="Tercero">Tercero</option>
-              <option value="Cuarto">Cuarto</option>
-              <option value="Quinto">Quinto</option>
-              <option value="Sexto">Sexto</option>
-            </select>
-          </div>
-
-          <div className="w-1/2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Paralelo
-            </label>
+    <Modal show={show} onClose={onClose} title={`Editar Curso: ${course?.course}`}>
+      {course && (
+        <form onSubmit={handleSubmit}>
+        <div className="mb-4 flex flex-col md:flex-row md:space-x-4">
+          <div className="w-full md:w-1/2 mb-4 md:mb-0">
+            <label className="block text-sm font-medium text-white">Grado</label>
             <input
-              type="text"
-              value={parallel}
-              onChange={handleParallelChange}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Ej. A, B, C"
-              required
+              value={course.degree}
+              readOnly
+              className="mt-1 block w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 cursor-not-allowed"
+            />
+          </div>
+          <div className="w-full md:w-1/2">
+            <label className="block text-sm font-medium text-white">Paralelo</label>
+            <input
+              value={course.parallel}
+              readOnly
+              className="mt-1 block w-full p-2 rounded-md bg-gray-700 text-white border border-gray-600 cursor-not-allowed"
             />
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          {/* Columna de materias disponibles */}
-          <div>
-            <h3 className="text-lg font-medium mb-2">Materias disponibles</h3>
-            <ul className="space-y-2">
+      
+        <p className="text-sm text-gray-300 mb-4 italic">
+          Arrastra o haz clic para mover materias entre columnas
+        </p>
+      
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Materias disponibles */}
+          <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-white mb-3">Materias disponibles</h3>
+            <ul className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-blue-700 scrollbar-track-gray-600">
               {availableMaterias.length > 0 ? (
                 availableMaterias.map((materia) => (
-                  <li key={materia._id}>
+                  <li key={materia.id}>
                     <button
                       type="button"
                       onClick={() => handleMateriaSelect(materia)}
-                      className="text-left px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-800 transition duration-200"
+                      className="w-full text-left px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition"
                     >
-                      {materia.name}
+                      {materia.subject}
                     </button>
                   </li>
                 ))
               ) : (
-                <p>No hay más materias disponibles</p>
+                <p className="text-gray-400">No hay más materias disponibles</p>
               )}
             </ul>
           </div>
-
-          {/* Columna de materias seleccionadas */}
-          <div>
-            <h3 className="text-lg font-medium mb-2">Materias seleccionadas</h3>
-            <ul className="space-y-2">
+      
+          {/* Materias seleccionadas */}
+          <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-white mb-3">Materias seleccionadas</h3>
+            <ul className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-green-700 scrollbar-track-gray-600">
               {selectedMaterias.length > 0 ? (
                 selectedMaterias.map((materia) => (
-                  <li key={materia._id}>
+                  <li key={materia.id}>
                     <button
                       type="button"
                       onClick={() => handleMateriaRemove(materia)}
-                      className="text-left px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-800 transition duration-200"
+                      className="w-full text-left px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-md transition"
                     >
-                      {materia.name}
+                      {materia.subject}
                     </button>
                   </li>
                 ))
               ) : (
-                <p>No has seleccionado materias</p>
+                <p className="text-gray-400">No has seleccionado materias</p>
               )}
             </ul>
           </div>
         </div>
-
-        {error && <p className="text-red-600 mt-4">{error}</p>}
-
-        <div className="mt-6">
+      
+        {error && <p className="text-red-500 mt-4">{error}</p>}
+      
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700"
+            className="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition"
             disabled={loading}
           >
             {loading ? 'Actualizando...' : 'Actualizar Curso'}
           </button>
         </div>
       </form>
+      )}
     </Modal>
   );
 };
