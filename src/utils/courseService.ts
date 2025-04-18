@@ -19,7 +19,7 @@ export const createCourse = async (courseData) => {
   }
 };
 
-export const getCourseById = async (id: string) => {
+export const getCourseById = async (id: number) => {
   try {
     const { url, config } = httpRequestFactory.createRequest(`/course/${id}`);
     const response = await fetch(url, config);

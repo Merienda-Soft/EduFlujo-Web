@@ -7,7 +7,7 @@ import { getInscriptionsByCourseId, createInscripcion } from '../../utils/regist
 interface RegistrationModalProps {
   show: boolean;
   onClose: () => void;
-  courseId: string;
+  courseId: number;
 }
 
 interface Student {

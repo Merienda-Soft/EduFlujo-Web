@@ -37,7 +37,7 @@ export const uploadPdf = async (file) => {
     }
   };
   
-  export const getInscriptionsByCourseId = async (cursoId: string) => {
+  export const getInscriptionsByCourseId = async (cursoId: number) => {
     try {
       const { url, config } = httpRequestFactory.createRequest(`/registration/curso/${cursoId}`);
       const response = await fetch(url, config);

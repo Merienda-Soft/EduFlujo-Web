@@ -4,7 +4,7 @@ import { httpRequestFactory } from './HttpRequestFactory';
 
 export const getProfesores = async () => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/teachers');
+    const { url, config } = httpRequestFactory.createRequest('/professors');
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener los profesores');
     return await response.json();
@@ -14,7 +14,7 @@ export const getProfesores = async () => {
   }
 };
 
-export const getProfesorById = async (id: string) => {
+export const getProfesorById = async (id: number) => {
   try {
     const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`);
     const response = await fetch(url, config);
@@ -40,7 +40,7 @@ export const getProfesorByEmail = async (email: string) => {
 
 export const createProfesor = async (profesorData: any) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/teachers', 'POST', profesorData);
+    const { url, config } = httpRequestFactory.createRequest('/professors', 'POST', profesorData);
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al crear el profesor');
     return await response.json();
@@ -78,7 +78,7 @@ export const deleteProfesor = async (id: string) => {
 
 export const getAsignaciones = async () => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/asignaciones');
+    const { url, config } = httpRequestFactory.createRequest('/assignment');
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener las asignaciones');
     return await response.json();
@@ -88,9 +88,9 @@ export const getAsignaciones = async () => {
   }
 };
 
-export const getAsignacionesByCurso = async (cursoId: string) => {
+export const getAsignacionesByCurso = async (cursoId: number) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/asignaciones/curso/${cursoId}`);
+    const { url, config } = httpRequestFactory.createRequest(`/assignment/course/${cursoId}`);
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al obtener las asignaciones para el curso');
     return await response.json();
@@ -102,7 +102,7 @@ export const getAsignacionesByCurso = async (cursoId: string) => {
 
 export const createAsignacion = async (asignacionData: any) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/asignaciones', 'POST', asignacionData);
+    const { url, config } = httpRequestFactory.createRequest('/assignment', 'POST', asignacionData);
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al crear la asignación');
     return await response.json();
@@ -112,9 +112,9 @@ export const createAsignacion = async (asignacionData: any) => {
   }
 };
 
-export const updateAsignacion = async (id: string, asignacionData: any) => {
+export const updateAsignacion = async (asignacionData: any) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/asignaciones/${id}`, 'PUT', asignacionData);
+    const { url, config } = httpRequestFactory.createRequest(`/assignment`, 'PUT', asignacionData);
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al actualizar la asignación');
     return await response.json();
