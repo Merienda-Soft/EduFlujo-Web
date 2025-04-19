@@ -39,7 +39,7 @@ export const uploadPdf = async (file) => {
   
   export const getInscriptionsByCourseId = async (cursoId: number) => {
     try {
-      const { url, config } = httpRequestFactory.createRequest(`/registration/curso/${cursoId}`);
+      const { url, config } = httpRequestFactory.createRequest(`/registration/course/${cursoId}`);
       const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al obtener las inscripciones para el curso');
       return await response.json();
@@ -63,14 +63,15 @@ export const uploadPdf = async (file) => {
   };
   
   
-  export const updateInscripcion = async (id: string, inscripcionData: any) => {
+  export const updateInscripcion = async (registrationUpdates) => {
+    console.log('registrationUpdates SERVICES:', registrationUpdates); 
     try {
-      const { url, config } = httpRequestFactory.createRequest(`/registration/${id}`, 'PUT', inscripcionData);
+      const { url, config } = httpRequestFactory.createRequest(`/registration`, 'PUT', registrationUpdates);
       const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al actualizar la inscripción');
       return await response.json();
     } catch (error) {
-      console.error(`Error al actualizar la inscripción con ID ${id}:`, error);
+      console.error(`Error al actualizar la inscripción`, error);
       throw error;
     }
   };
