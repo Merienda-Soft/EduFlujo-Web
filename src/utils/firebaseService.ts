@@ -40,6 +40,7 @@ export const uploadTutorDocuments = async (
     name: string;
     lastname: string;
     second_lastname: string;
+    birthdate: string;
   },
   frontImage: File,
   backImage: File
@@ -54,7 +55,7 @@ export const uploadTutorDocuments = async (
       compressImage(backImage)
     ]);
 
-    const folderName = `${tutorData.name}_${tutorData.lastname}_${tutorData.second_lastname}`
+    const folderName = `${tutorData.name}_${tutorData.lastname}_${tutorData.second_lastname}_${tutorData.birthdate}`
       .toLowerCase()
       .replace(/\s+/g, '_')
       .normalize("NFD")
