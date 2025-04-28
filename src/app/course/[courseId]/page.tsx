@@ -269,11 +269,13 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
               </div>
               
               <div className="flex space-x-10">
-                <div className="w-2/3">
-                  <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Materias</h3>
-                  
-                  <div className="mb-8">
-                    <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Regulares</h4>
+              <div className="w-2/3">
+                <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Materias</h3>
+                
+                {/* Materias Regulares */}
+                <div className="mb-3">
+                  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Regulares</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {course.curriculums
                       .filter(curriculum => {
                         const subject = subjects.find(s => s.id === curriculum.subject_id);
@@ -291,9 +293,12 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
                         ) : null;
                       })}
                   </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Técnicas</h4>
+                </div>
+                
+                {/* Materias Técnicas */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Técnicas</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {course.curriculums
                       .filter(curriculum => {
                         const subject = subjects.find(s => s.id === curriculum.subject_id);
@@ -312,6 +317,7 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
                       })}
                   </div>
                 </div>
+              </div>
                 
                 <div className="w-1/3">
                   <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Docentes</h3>
@@ -405,19 +411,15 @@ const SubjectItem = ({
   return (
     <div
       ref={drop as unknown as React.LegacyRef<HTMLDivElement>}
-      className={`p-5 rounded mb-4 shadow-lg border ${
+      className={`p-5 rounded shadow-lg border ${
         subject.is_tecnical === 1 
           ? 'border-purple-200 dark:border-purple-600' 
-          : 'border-gray-200 dark:border-gray-600'
+          : 'border-gray-200 dark:border-indigo-600'
       } ${isOver ? 'border-blue-500 dark:border-blue-400' : ''} bg-white dark:bg-gray-800`}
+      
     >
       <h4 className="font-bold text-gray-700 dark:text-white mb-2">
         {subject.subject}
-        {subject.is_tecnical === 1 && (
-          <span className="ml-2 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">
-            Técnica
-          </span>
-        )}
       </h4>
       <p className="text-sm text-gray-500 dark:text-gray-300">
         {professor ? `Asignado a: ${professor.full_name}` : 'Sin asignar'}

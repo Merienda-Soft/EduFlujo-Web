@@ -2,49 +2,64 @@ import { getAccessToken } from '../../api/auth/getAccessToken';
 import axios from 'axios';
 
 export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const emails = searchParams.get('emails');
+  
   const token = await getAccessToken();
+  
+  if (!emails) {
+    return new Response(JSON.stringify({ error: 'Emails parameter is required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-  const options = {
-    method: 'GET',
-    url: `${process.env.AUTH0_AUDIENCE}users`,
-    headers: {
-      authorization: `Bearer ${token}`,
-    },
-  };
-
+  const emailList = emails.split(',').map(email => email.trim().toLowerCase());
+  
   try {
-    const response = await axios.request(options);
-    const users = response.data;
+    
+    const options = {
+      method: 'GET',
+      url: `${process.env.AUTH0_AUDIENCE}users`,
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      params: {
+        q: `email:("${emailList.join('" OR "')}")`,
+        search_engine: 'v3'
+      }
+    };
 
-    // Obtener roles por cada usuario
-    const usersWithRoles = [];
-      for (const user of users) {
+    const response = await axios.request(options);
+    const filteredUsers = response.data;
+
+    // Obtenemos roles en batch si es posible
+    const usersWithRoles = await Promise.all(
+      filteredUsers.map(async (user) => {
         try {
           const roleResponse = await axios.get(`${process.env.AUTH0_AUDIENCE}users/${user.user_id}/roles`, {
             headers: {
               authorization: `Bearer ${token}`,
             },
           });
-
-          usersWithRoles.push({
+          return {
             ...user,
-            roles: roleResponse.data.map(role => role.name),
-          });
+            roles: roleResponse.data.map(role => role.description),
+          };
         } catch (roleError) {
           console.error(`Error obteniendo roles para el usuario ${user.user_id}`, roleError.message);
-          usersWithRoles.push({
+          return {
             ...user,
             roles: [],
-          });
+          };
         }
-      }
-
+      })
+    );
 
     return new Response(JSON.stringify(usersWithRoles), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-
   } catch (error) {
     console.error('Error listing users:', error);
     return new Response(JSON.stringify({ error: 'Error retrieving users' }), {

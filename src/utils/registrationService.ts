@@ -2,7 +2,7 @@ import axios from 'axios';
 import { httpRequestFactory } from './HttpRequestFactory';
 
 //URL SERVICE PDF
-const SERVICE_PDF_URL = process.env.NEXT_PUBLIC_SERVICE_PDF_URL
+const SERVICE_URL = process.env.NEXT_PUBLIC_SERVICE_URL;
 
 //UPLOAD PDF
 
@@ -11,7 +11,7 @@ export const uploadPdf = async (file) => {
     formData.append('pdf', file); 
   
     try {
-      const response = await axios.post(SERVICE_PDF_URL, formData, {
+      const response = await axios.post(`${SERVICE_URL}/upload_pdf`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

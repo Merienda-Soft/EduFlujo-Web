@@ -128,7 +128,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
     try {
       setIsLoading(true);
       const pdfData = await uploadPdf(file);
-      
+      console.log('Datos del PDF:', pdfData);
       const mergedStudents = [...students];
       
       pdfData.forEach((student: any) => {
@@ -329,23 +329,24 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
             <table className="min-w-full text-sm table-fixed border-collapse bg-white dark:bg-gray-800">
               <thead>
                 <tr className="bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-24">RUDE</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">RUDE</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">CI</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600">Nombre</th>
-                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-16">Género</th>
-                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-24">Nacimiento</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-5">Género</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">Nacimiento</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">País</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600">Departamento</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600">Provincia</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600">Localidad</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">Matrícula</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-8"></th>
                 </tr>
               </thead>
               <tbody>
                 {students.map((student, index) => (
                   <tr 
                     key={index} 
-                    className={`${student.isExisting ? 'bg-green-50 text-green-900 dark:bg-green-900 dark:text-green-100' : 'bg-white dark:bg-gray-800'}`}
+                    className={`${student.isExisting ? 'bg-green-50 text-green-900 dark:border-green-900 dark:bg-gray-800 dark:text-green-100' : 'bg-white dark:bg-gray-800'}`}
                   >
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
                       <input
@@ -438,14 +439,16 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600 text-center">
-                      <button
-                        onClick={() => handleDeleteRow(index)}
-                        className={`${student.isExisting ? 'text-green-500 hover:text-green-400 dark:text-green-400 dark:hover:text-green-300' : 'text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300'}`}
-                        disabled={isLoading || student.isExisting}
-                        title={student.isExisting ? 'Estudiante ya registrado' : 'Eliminar estudiante'}
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
+                      {!student.isExisting && (
+                        <button
+                          onClick={() => handleDeleteRow(index)}
+                          className="text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300"
+                          disabled={isLoading}
+                          title="Eliminar estudiante"
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

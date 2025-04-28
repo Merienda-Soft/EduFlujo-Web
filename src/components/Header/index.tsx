@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ThemeToggler from "./ThemeToggler";
 import { menuData as initialMenuData, updateMenuDataWithManagements } from "./menuData";
-import { useUser } from "@auth0/nextjs-auth0/client"; // Importa Auth0
+import { useUser } from "@auth0/nextjs-auth0/client"; 
 import { destroyCookie } from 'nookies';
-import { setManagementGlobal } from '../../utils/globalState'; // Importar la función para actualizar la variable global
+import { setManagementGlobal } from '../../utils/globalState';
 
 const Header = () => {
   // Navbar toggle
@@ -43,10 +43,9 @@ const Header = () => {
 
   const { user, isLoading } = useUser();
   const handleLogout = () => {
-    destroyCookie(null, 'cookie_name', { path: '/' }); // Reemplaza 'cookie_name' por el nombre de tu cookie
+    destroyCookie(null, 'cookie_name', { path: '/' }); 
     destroyCookie(null, 'another_cookie_name', { path: '/' });
 
-    // Redirigir al endpoint de logout de Auth0
     window.location.href = '/api/auth/logout';
   };
 
@@ -55,7 +54,7 @@ const Header = () => {
   useEffect(() => {
     const initializeMenuData = async () => {
       const updatedMenuData = await updateMenuDataWithManagements();
-      setMenuData(updatedMenuData); // Actualizar el estado del menú
+      setMenuData(updatedMenuData); 
     };
 
     initializeMenuData();

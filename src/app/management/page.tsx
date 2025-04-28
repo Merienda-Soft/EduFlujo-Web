@@ -1,6 +1,7 @@
 import Breadcrumb from '../../components/Common/Breadcrumb';
 import StartManagement from '../../components/Management/StartManagement';
 
+
 export const metadata = {
   title: 'Gestion',
 };
