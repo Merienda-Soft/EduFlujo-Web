@@ -4,15 +4,15 @@ import TutorRegister from "../../components/Tutor/TutorRegister";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Tutorias",
+  title: "Tutor",
 };
 
 const Tutor = () => {
   return (
     <>
       <Breadcrumb
-        pageName="Registro de Tutorias"
-        description="Inicia el proceso de registro de tutorias. Asegúrate de tener todos los documentos necesarios y sigue las instrucciones para completar el registro."
+        pageName="Registro de Tutor"
+        description="Registrate en el sitema para gestionar tus tutorias. Completa el formulario y sube los documentos necesarios para iniciar el proceso."
       />
       <TutorRegister />
     </>
