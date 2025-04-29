@@ -27,7 +27,7 @@ export const getTutorShipByStatus = async (value: number) => {
     try {
       const { url, config } = httpRequestFactory.createRequest(`/tutor-student/${value}`);
       const response = await fetch(url, config);
-      if (!response.ok) throw new Error('Error al obtener las inscripciones');
+      if (!response.ok) throw new Error('Error al obtener las tutorias');
       return await response.json();
     } catch (error) {
       console.error('Error al obtener las tutorias:', error);

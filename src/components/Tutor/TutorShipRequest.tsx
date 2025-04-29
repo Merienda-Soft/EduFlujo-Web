@@ -169,7 +169,7 @@ const TutorshipRequest = () => {
   };
 
   return (
-      <div className="rounded-sm border-strok p-20 pb-20">
+      <div className="rounded-sm border-strok pl-40 pr-40 pt-20 pb-20">
         {isLoading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary dark:border-primary-dark"></div>

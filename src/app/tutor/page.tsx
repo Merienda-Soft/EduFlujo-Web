@@ -1,5 +1,6 @@
 import Breadcrumb from "../../components/Common/Breadcrumb";
 import TutorRegister from "../../components/Tutor/TutorRegister";
+import dynamic from 'next/dynamic';
 
 import { Metadata } from "next";
 
