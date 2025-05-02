@@ -1,24 +1,35 @@
+import { getSession } from '@auth0/nextjs-auth0';
 import UserList from "../../components/UserManagement/UserList";
 import Breadcrumb from "../../components/Common/Breadcrumb";
 import CreateUserForm from '../../components/UserManagement/CreateUserForm';
+import UnauthorizedAccess from '../../components/Authorization/Unauthorized';
+import { redirect } from 'next/navigation';
 
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
+export const metadata = {
   title: "Lista de Usuarios",
 };
 
-const User = () => {
+export default async function User() {
+  const session = await getSession();
+  const user = session?.user;
+  
+  if (!user) {
+      redirect('/api/auth/login');
+  }
+
+  const roles: string[] = user?.['https://eduflujo.com/roles'] || [];
+  
+  if (!roles.includes('admin')) {
+    return <UnauthorizedAccess />;
+  }
   return (
     <>
       <Breadcrumb
         pageName="Lista de Usuarios"
-        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. In varius eros eget sapien consectetur ultrices. Ut quis dapibus libero."
+        description="Gestiona todos los usuarios del sistema. Crea nuevos usuarios, edita permisos y realiza otras acciones administrativas."
       />
       <CreateUserForm />
       <UserList />
     </>
   );
-};
-
-export default User;
+}

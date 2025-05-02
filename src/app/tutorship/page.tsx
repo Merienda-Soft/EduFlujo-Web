@@ -1,14 +1,26 @@
+import { getSession } from '@auth0/nextjs-auth0';
 import Breadcrumb from "../../components/Common/Breadcrumb";
 import TutorshipRequest from "../../components/Tutor/TutorShipRequest";
-
-
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
+import UnauthorizedAccess from '../../components/Authorization/Unauthorized';
+import { redirect } from 'next/navigation';
+export const metadata = {
   title: "Tutorias",
 };
 
-const Tutorship = () => {
+export default async function Tutorship() {
+  const session = await getSession();
+  const user = session?.user;
+
+  if (!user) {
+      redirect('/api/auth/login');
+  }
+
+  const roles: string[] = user?.['https://eduflujo.com/roles'] || [];
+
+  if (!roles.includes('tutor')) {
+    return <UnauthorizedAccess />;
+  }
+
   return (
     <>
       <Breadcrumb
@@ -18,6 +30,4 @@ const Tutorship = () => {
       <TutorshipRequest />
     </>
   );
-};
-
-export default Tutorship;
+}

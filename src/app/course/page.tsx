@@ -1,5 +1,8 @@
+import { getSession } from '@auth0/nextjs-auth0';
+import { redirect } from 'next/navigation';
 import Breadcrumb from '../../components/Common/Breadcrumb';
 import dynamic from 'next/dynamic';
+import UnauthorizedAccess from '../../components/Authorization/Unauthorized';
 
 export const metadata = {
   title: 'Cursos',
@@ -19,7 +22,20 @@ const CourseClient = dynamic(
   }
 );
 
-const Course = () => {
+export default async function Course() {
+  const session = await getSession();
+  const user = session?.user;
+  
+  if (!user) {
+    redirect('/api/auth/login');
+  }
+
+  const roles: string[] = user?.['https://eduflujo.com/roles'] || [];
+  
+  if (!roles.includes('admin')) {
+    return <UnauthorizedAccess />;
+  }
+
   return (
     <>
       <Breadcrumb
@@ -29,6 +45,4 @@ const Course = () => {
       <CourseClient />
     </>
   );
-};
-
-export default Course;
+}

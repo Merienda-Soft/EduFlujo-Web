@@ -1,6 +1,8 @@
+// data/menuData.ts
 import { Menu } from '../../types/menu';
 import { getYearManagements } from '../../utils/managementService';
 import { managementGlobal } from '../../utils/globalState';
+import { useUserRoles } from '../../utils/roleUtils';
 
 let menuData: Menu[] = [
   {
@@ -8,46 +10,95 @@ let menuData: Menu[] = [
     title: "Home",
     path: "/",
     newTab: false,
+    roles: ['student', 'professor', 'admin', 'tutor'] 
   },
   {
     id: 2,
     title: "Cursos",
     path: "/course",
+    roles: ['professor', 'admin'],
     newTab: false,
   },
   {
     id: 3,
     title: "Profesores",
     path: "/user",
+    roles: ['admin'],
     newTab: false,
   },
   {
     id: 4,
-    title: "Soporte",
-    path: "/contact",
+    title: "Tutoria",
+    path: "/tutorship",
+    roles: ['tutor', 'professor'],
     newTab: false,
   },
   {
     id: 5,
+    title: "Tutor",
+    newTab: false,
+    roles: ['admin'],
+    submenu: [
+      {
+        id: 51,
+        title: "Tutores Disponibles",
+        path: "/tutor/1",
+        newTab: false,
+        roles: ['admin']
+      },
+      {
+        id: 52,
+        title: "Solicitudes Pendientes",
+        path: "/tutor/2",
+        newTab: false,
+        roles: ['admin'] 
+      },
+      {
+        id: 53,
+        title: "Solicitudes Rechazados",
+        path: "/tutor/0",
+        newTab: false,
+        roles: ['admin'] 
+      }
+    ]
+  },
+  {
+    id: 6,
+    title: "Academico",
+    path: "/academic",
+    roles: ['admin'],
+    newTab: false,
+  },
+  {
+    id: 7,
+    title: "Inicio",
+    path: "/management",
+    roles: ['admin'],
+    newTab: false,
+  },
+  {
+    id: 8,
     title: "Gestion",
     newTab: false,
-    submenu: [], // lista de gestiones
+    roles: ['admin'],
+    submenu: [],
   },
 ];
 
-export const updateMenuDataWithManagements = async () => {
+export const updateMenuDataWithManagements = async (userRoles: string[] = []) => {
   try {
     const managements = await getYearManagements();
     const managementSubmenu = managements.map((management: any) => ({
       id: management.id,
       title: management.management,
       status: management.status,
-      path: `/management/${management.id}`,
+      path: `/`,
       newTab: false,
+      roles: ['admin'] 
     }));
 
-    menuData = menuData.map((menu) => {
-      if (menu.id === 5) {
+    let updatedMenu = menuData.map((menu) => {
+      if (menu.id === 8) {
         return {
           ...menu,
           submenu: managementSubmenu,
@@ -56,8 +107,8 @@ export const updateMenuDataWithManagements = async () => {
       return menu;
     });
 
-    menuData = menuData.map((menu) => {
-      if (menu.id === 5) {
+    updatedMenu = updatedMenu.map((menu) => {
+      if (menu.id === 8) {
         return {
           ...menu,
           title: `Gestion: ${managementGlobal.year}`,
@@ -66,10 +117,17 @@ export const updateMenuDataWithManagements = async () => {
       return menu;
     });
 
-    return menuData;
+    // Filtra el menú por roles
+    return updatedMenu.filter(menuItem => {
+      if (!menuItem.roles) return true;
+      return menuItem.roles.some(role => userRoles.includes(role));
+    });
   } catch (error) {
     console.error('Error updating menu data with managements:', error);
-    return menuData;
+    return menuData.filter(menuItem => {
+      if (!menuItem.roles) return true;
+      return menuItem.roles.some(role => userRoles.includes(role));
+    });
   }
 };
 

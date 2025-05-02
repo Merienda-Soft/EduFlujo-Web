@@ -1,3 +1,4 @@
+// components/Header.tsx
 "use client";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,82 +9,66 @@ import { menuData as initialMenuData, updateMenuDataWithManagements } from "./me
 import { useUser } from "@auth0/nextjs-auth0/client"; 
 import { destroyCookie } from 'nookies';
 import { setManagementGlobal } from '../../utils/globalState';
+import { useUserRoles } from '../../utils/roleUtils';
 
 const Header = () => {
-  // Navbar toggle
   const [navbarOpen, setNavbarOpen] = useState(false);
-  const navbarToggleHandler = () => {
-    setNavbarOpen(!navbarOpen);
-  };
-
-  // Sticky Navbar
   const [sticky, setSticky] = useState(false);
-  const handleStickyNavbar = () => {
-    if (window.scrollY >= 80) {
-      setSticky(true);
-    } else {
-      setSticky(false);
-    }
-  };
-  useEffect(() => {
-    window.addEventListener("scroll", handleStickyNavbar);
-  });
-
-  // submenu handler
   const [openIndex, setOpenIndex] = useState(-1);
-  const handleSubmenu = (index) => {
-    if (openIndex === index) {
-      setOpenIndex(-1);
-    } else {
-      setOpenIndex(index);
-    }
-  };
-
-  const usePathName = usePathname();
-
-  const { user, isLoading } = useUser();
-  const handleLogout = () => {
-    destroyCookie(null, 'cookie_name', { path: '/' }); 
-    destroyCookie(null, 'another_cookie_name', { path: '/' });
-
-    window.location.href = '/api/auth/logout';
-  };
-
   const [menuData, setMenuData] = useState(initialMenuData);
+  
+  const { user, isLoading } = useUser();
+  const { hasRole, roles } = useUserRoles();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const handleStickyNavbar = () => {
+      setSticky(window.scrollY >= 80);
+    };
+    window.addEventListener("scroll", handleStickyNavbar);
+    return () => window.removeEventListener("scroll", handleStickyNavbar);
+  }, []);
 
   useEffect(() => {
     const initializeMenuData = async () => {
-      const updatedMenuData = await updateMenuDataWithManagements();
+      const updatedMenuData = await updateMenuDataWithManagements(roles);
       setMenuData(updatedMenuData); 
     };
-
     initializeMenuData();
-  }, []);
+  }, [roles]);
+
+  const navbarToggleHandler = () => setNavbarOpen(!navbarOpen);
+  
+  const handleSubmenu = (index) => {
+    setOpenIndex(openIndex === index ? -1 : index);
+  };
+
+  const handleLogout = () => {
+    destroyCookie(null, 'cookie_name', { path: '/' }); 
+    destroyCookie(null, 'another_cookie_name', { path: '/' });
+    window.location.href = '/api/auth/logout';
+  };
 
   const handleSubmenuSelect = (title) => {
-    const year = title;
-    setManagementGlobal({ id: 0, year }); 
+    setManagementGlobal({ id: 0, year: title }); 
     window.location.reload(); 
   };
 
+  const filteredMenuData = menuData.filter(menuItem => {
+    if (!menuItem.roles) return true;
+    return hasRole(menuItem.roles);
+  });
+
   return (
     <>
-      <header
-        className={`header left-0 top-0 z-40 flex w-full items-center ${
-          sticky
-            ? "dark:bg-gray-dark dark:shadow-sticky-dark fixed z-[9999] bg-white !bg-opacity-80 shadow-sticky backdrop-blur-sm transition"
-            : "absolute bg-transparent"
-        }`}
-      >
+      <header className={`header left-0 top-0 z-40 flex w-full items-center ${
+        sticky ? "dark:bg-gray-dark dark:shadow-sticky-dark fixed z-[9999] bg-white !bg-opacity-80 shadow-sticky backdrop-blur-sm transition"
+              : "absolute bg-transparent"}`}>
         <div className="container">
           <div className="relative -mx-4 flex items-center justify-between">
             <div className="w-60 max-w-full px-4 xl:mr-12">
-              <Link
-                href="/"
-                className={`header-logo block w-full ${
-                  sticky ? "py-5 lg:py-2" : "py-8"
-                } `}
-              >
+              <Link href="/" className={`header-logo block w-full ${
+                sticky ? "py-5 lg:py-2" : "py-8"}`}>
                 <Image
                   src="/images/logo/logo_edu2.png"
                   alt="logo"
@@ -100,48 +85,39 @@ const Header = () => {
                 />
               </Link>
             </div>
+            
             <div className="flex w-full items-center justify-between px-4">
               <div>
-                {/* Botón de menú para móviles */}
                 <button
                   onClick={navbarToggleHandler}
                   id="navbarToggler"
                   aria-label="Mobile Menu"
                   className="absolute right-4 top-1/2 block translate-y-[-50%] rounded-lg px-3 py-[6px] ring-primary focus:ring-2 lg:hidden"
                 >
-                  <span
-                    className={`relative my-1.5 block h-0.5 w-[30px] bg-black transition-all duration-300 dark:bg-white ${
-                      navbarOpen ? " top-[7px] rotate-45" : " "
-                    }`}
-                  />
-                  <span
-                    className={`relative my-1.5 block h-0.5 w-[30px] bg-black transition-all duration-300 dark:bg-white ${
-                      navbarOpen ? "opacity-0 " : " "
-                    }`}
-                  />
-                  <span
-                    className={`relative my-1.5 block h-0.5 w-[30px] bg-black transition-all duration-300 dark:bg-white ${
-                      navbarOpen ? " top-[-8px] -rotate-45" : " "
-                    }`}
-                  />
+                  <span className={`relative my-1.5 block h-0.5 w-[30px] bg-black transition-all duration-300 dark:bg-white ${
+                    navbarOpen ? " top-[7px] rotate-45" : " "}`} />
+                  <span className={`relative my-1.5 block h-0.5 w-[30px] bg-black transition-all duration-300 dark:bg-white ${
+                    navbarOpen ? "opacity-0 " : " "}`} />
+                  <span className={`relative my-1.5 block h-0.5 w-[30px] bg-black transition-all duration-300 dark:bg-white ${
+                    navbarOpen ? " top-[-8px] -rotate-45" : " "}`} />
                 </button>
-                {!isLoading && user && (
-                  <nav
-                    id="navbarCollapse"
-                    className={`navbar absolute right-0 z-30 w-[250px] rounded border-[.5px] border-body-color/50 bg-white px-6 py-4 duration-300 dark:border-body-color/20 dark:bg-dark lg:visible lg:static lg:w-auto lg:border-none lg:!bg-transparent lg:p-0 lg:opacity-100 ${
-                      navbarOpen
-                        ? "visibility top-full opacity-100"
-                        : "invisible top-[120%] opacity-0"
-                    }`}
-                  >
+                  <nav id="navbarCollapse" className={`navbar absolute right-0 z-30 w-[250px] rounded border-[.5px] border-body-color/50 bg-white px-6 py-4 duration-300 dark:border-body-color/20 dark:bg-dark lg:visible lg:static lg:w-auto lg:border-none lg:!bg-transparent lg:p-0 lg:opacity-100 ${
+                    navbarOpen ? "visibility top-full opacity-100" : "invisible top-[120%] opacity-0"
+                  }`}>
                     <ul className="block lg:flex lg:space-x-12">
-                      {menuData.map((menuItem, index) => (
-                        <li key={index} className="group relative">
-                          {menuItem.path ? (
+                      {!isLoading && !user && (
+                        <Link href="/tutor" className="btn btn-primary">
+                          Solicitar Tutoria
+                        </Link>
+                      )}
+                      
+                      {!isLoading && user && filteredMenuData.map((menuItem, index) => (
+                        <li key={menuItem.id} className="group relative">
+                          {menuItem.path && !menuItem.submenu ? (
                             <Link
                               href={menuItem.path}
                               className={`flex py-2 text-base lg:mr-0 lg:inline-flex lg:px-0 lg:py-6 ${
-                                usePathName === menuItem.path
+                                pathname === menuItem.path
                                   ? "text-primary dark:text-white"
                                   : "text-dark hover:text-primary dark:text-white/70 dark:hover:text-white"
                               }`}
@@ -171,14 +147,17 @@ const Header = () => {
                                   openIndex === index ? "block" : "hidden"
                                 }`}
                               >
-                                {menuItem.submenu.map((submenuItem, index) => (
-                                  <label
-                                    key={index}
+                                {menuItem.submenu?.filter(subItem => 
+                                  !subItem.roles || hasRole(subItem.roles)
+                                ).map((submenuItem) => (
+                                  <Link
+                                    key={submenuItem.id}
+                                    href={submenuItem.path}
+                                    className="block rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3"
                                     onClick={() => handleSubmenuSelect(submenuItem.title)}
-                                    className="block rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3 cursor-pointer"
                                   >
                                     {submenuItem.title}
-                                  </label>
+                                  </Link>
                                 ))}
                               </div>
                             </>
@@ -187,10 +166,8 @@ const Header = () => {
                       ))}
                     </ul>
                   </nav>
-                )}
               </div>
 
-              {/* Sección de login/logout */}
               <div className="flex items-center justify-end pr-16 lg:pr-0">
                 {!isLoading && !user && (
                   <Link href="/api/auth/login" className="btn btn-primary">

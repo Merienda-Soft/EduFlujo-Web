@@ -30,6 +30,7 @@ export const getYearManagements = async () => {
         const { url, config } = httpRequestFactory.createRequest('/management/year');
         const response = await fetch(url, config);
         if (!response.ok) throw new Error('Error al obtener las gestiones');
+        console.log('Response:', response.json);
         return await response.json();
     } catch (error) {
         console.error(error);
@@ -54,6 +55,19 @@ export const deleteManagement = async (id: string) => {
         const { url, config } = httpRequestFactory.createRequest(`/management/${id}`, 'DELETE');
         const response = await fetch(url, config);
         if (!response.ok) throw new Error('Error al eliminar la gestión');
+        return await response.json();
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
+export const cloneManagement = async (managementData: any) => {
+    console.log('Management Data:', managementData);
+    try {
+        const { url, config } = httpRequestFactory.createRequest('/management/clone', 'POST', managementData);
+        const response = await fetch(url, config);
+        if (!response.ok) throw new Error('Error al cargar los detalles de la gestion anterior');
         return await response.json();
     } catch (error) {
         console.error(error);

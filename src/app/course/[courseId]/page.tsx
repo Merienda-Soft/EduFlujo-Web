@@ -136,7 +136,7 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
             updated.push({
               id: 0,
               subject_id: subjectItem.id,
-              professor_id: professor.id
+              professor_id: professor.id,
             });
           }
         });
@@ -159,9 +159,9 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
         return [
           ...prev,
           {
-            id: 0, // Temporal ID for new assignments
+            id: 0, 
             subject_id: subject.id,
-            professor_id: professor.id
+            professor_id: professor.id,
           }
         ];
       }
@@ -202,11 +202,13 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
         await updateAsignacion(updates);
         Swal.fire('Éxito', 'Asignaciones actualizadas con éxito', 'success');
       } else {
+
         // Create new assignments
         const newAssignments = assignments.map(assignment => ({
           subject_id: assignment.subject_id,
           professor_id: assignment.professor_id,
-          course_id: Number(courseId)
+          course_id: Number(courseId),
+          management_id: course?.management.id,
         }));
         console.log('New Assignments:', newAssignments);
         await createAsignacion(newAssignments);
