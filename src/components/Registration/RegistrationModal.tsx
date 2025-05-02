@@ -34,6 +34,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   const [existingStudents, setExistingStudents] = useState<Student[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const isCurrentYear = managementGlobal.year === new Date().getFullYear();
 
   useEffect(() => {
     const fetchExistingStudents = async () => {
@@ -284,6 +285,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   return (
     <Modal show={show} onClose={onClose} title="Inscripción de Estudiantes">
       <div className="flex flex-col space-y-4 dark:text-white">
+      {isCurrentYear && (
         <div className="flex justify-between items-center">
           <div className="flex space-x-2">
             <input
@@ -315,6 +317,13 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
             {isLoading ? 'Procesando...' : 'Registrar Inscripciones'}
           </button>
         </div>
+      )}
+
+        {!isCurrentYear && (
+          <div className="text-center py-4 text-white-500 dark:text-white-400">
+            <p>Estudiantes Registrados en la gestion: {managementGlobal.year}.</p>
+          </div>
+        )}
 
         {isLoading && (
           <div className="text-center py-4">

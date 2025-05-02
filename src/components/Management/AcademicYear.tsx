@@ -2,10 +2,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getYearManagements, cloneManagement } from '../../utils/managementService';
-import { DatePicker, Spin, message, Button, Card, Form, Row, Col, Typography, Input } from 'antd';
+import { DatePicker, Spin, message, Button, Card, Form, Row, Col, Typography, Input, Steps, Progress, Result } from 'antd';
 import dayjs from 'dayjs';
+import { CheckCircleFilled, LoadingOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+const { Step } = Steps;
 
 interface Management {
   id: number;
@@ -25,7 +27,6 @@ interface CloneResults {
   success: boolean;
   new_management_id: string;
   new_management_year: string;
-
   results: {
     new_courses: string;
     new_curricula: string;
@@ -38,10 +39,11 @@ const AcademicYear = () => {
   const [form] = Form.useForm();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState('');
+  const [currentStep, setCurrentStep] = useState(0);
   const [sourceManagement, setSourceManagement] = useState<Management | null>(null);
   const [managements, setManagements] = useState<Management[]>([]);
   const [results, setResults] = useState<CloneResults | null>(null);
+  const [showProgress, setShowProgress] = useState(false);
 
   useEffect(() => {
     fetchManagements();
@@ -63,11 +65,11 @@ const AcademicYear = () => {
         setSourceManagement(mostRecent);
         prefillFormDates(mostRecent);
       } else {
-        message.warning('No se encontraron gestiones activas');
+        message.warning('No se encontraron gestiones académicas activas');
       }
     } catch (error) {
-      console.error('Error fetching managements:', error);
-      message.error('Error al cargar las gestiones');
+      console.error('Error al obtener gestiones:', error);
+      message.error('Error al cargar las gestiones académicas');
     } finally {
       setLoading(false);
     }
@@ -96,11 +98,12 @@ const AcademicYear = () => {
   const handleSubmit = async () => {
     try {
       if (!sourceManagement) {
-        throw new Error('No hay gestión seleccionada');
+        throw new Error('No se ha seleccionado una gestión académica de origen');
       }
 
       setLoading(true);
-      setProgress('Validando datos...');
+      setShowProgress(true);
+      setCurrentStep(0);
       
       const values = await form.validateFields();
       
@@ -117,43 +120,45 @@ const AcademicYear = () => {
         third_quarter_end: formatDate(values.quarterDates.third_quarter_end)
       };
 
-      setProgress('Clonando estructura académica...');
+      // Simular pasos del proceso
+      const steps = [
+        { title: 'Validando datos', duration: 800 },
+        { title: 'Creando estructura de gestión', duration: 1000 },
+        { title: 'Clonando cursos', duration: 1200 },
+        { title: 'Asignando materias', duration: 1500 },
+        { title: 'Configurando paralelos', duration: 1800 },
+        { title: 'Finalizando proceso', duration: 800 }
+      ];
+
+      for (let i = 0; i < steps.length; i++) {
+        setCurrentStep(i);
+        await new Promise(resolve => setTimeout(resolve, steps[i].duration));
+      }
+
+      // Llamada real a la API
       const response = await cloneManagement({
         sourceManagementId: sourceManagement.id,
         newManagementYear: values.newManagementYear,
         quarterDates
       });
 
-      const steps = [
-        'Creando cursos...',
-        'Asignando materias...',
-        'Configurando paralelos...',
-        'Finalizando proceso...'
-      ];
-      
-      for (const step of steps) {
-        setProgress(step);
-        await new Promise(resolve => setTimeout(resolve, 800));
-      }
-
       setResults(response);
-      console.log('Clonación exitosa:', response);
-      message.success('Gestión clonada exitosamente!');
+      message.success('¡Gestión académica clonada con éxito!');
     } catch (error: any) {
-      console.error('Error in handleSubmit:', error);
-      message.error(`Error: ${error.message || 'Ocurrió un error al clonar la gestión'}`);
+      console.error('Error en handleSubmit:', error);
+      message.error(`Error: ${error.message || 'No se pudo clonar la gestión académica'}`);
     } finally {
       setLoading(false);
-      setProgress('');
+      setShowProgress(false);
     }
   };
 
   if (loading && !sourceManagement) {
     return (
-      <div className="container mx-auto px-4 py-12 flex justify-center items-center">
+      <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-700 dark:text-gray-300">Cargando gestiones...</p>
+          <Spin indicator={<LoadingOutlined style={{ fontSize: 48 }} spin />} />
+          <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">Cargando gestiones académicas...</p>
         </div>
       </div>
     );
@@ -161,23 +166,22 @@ const AcademicYear = () => {
 
   if (!sourceManagement) {
     return (
-      <div className="container mx-auto px-4 py-12">
-        <Card 
-          className="bg-white dark:bg-gray-900 p-8 rounded-md shadow-lg"
-        >
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
+        <Card className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border-0">
           <div className="text-center">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
               Clonar Gestión Académica
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              No se encontró ninguna gestión activa para clonar.
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              No se encontraron gestiones académicas activas para clonar.
             </p>
             <Button 
               type="primary" 
               onClick={fetchManagements}
-              className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-md transition duration-300"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition duration-300"
+              size="large"
             >
-              Reintentar
+              Intentar nuevamente
             </Button>
           </div>
         </Card>
@@ -186,64 +190,129 @@ const AcademicYear = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Clonar Gestión Académica
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Empezar un nuevo año académico
         </h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-2">
+          Crea una nueva gestión académica basada en la gestión: {sourceManagement.management} y configura los trimestres y fechas importantes. NOTA: se creará una nueva gestión copiando la estructura de la gestión anterior.
+        </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 bg-opacity-100 p-8 rounded-md shadow-lg">
-        {results ? (
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
-              Proceso completado exitosamente
-            </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              Nueva gestión creada para el año: <strong className="text-primary">{results.new_management_year}</strong>
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {[
-                { title: 'Cursos creados', value: results.results.new_courses },
-                { title: 'Materias asignadas', value: results.results.new_curricula },
-                { title: 'Profesores asignados', value: results.results.new_assignments },
-                { title: 'Estudiantes matriculados', value: results.results.new_registrations }
-              ].map((item, index) => (
-                <div 
-                  key={index}
-                  className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700"
-                >
-                  <h3 className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {item.value}
-                  </p>
-                </div>
-              ))}
-            </div>
+      {showProgress ? (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+          <div className="max-w-2xl mx-auto text-gray-800 dark:text-gray-300">
+            <Steps current={currentStep} direction="vertical" className="mb-8">
+              <Step title="Validando datos" />
+              <Step title="Creando estructura" />
+              <Step title="Clonando cursos" />
+              <Step title="Asignando materias" />
+              <Step title="Configurando paralelos" />
+              <Step title="Finalizando proceso" />
+            </Steps>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button 
-                onClick={() => {
-                  setResults(null);
-                  fetchManagements();
-                }}
-                className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-6 py-2 rounded-md transition duration-300"
-              >
-                Crear otra gestión
-              </Button>
-              <Button 
-                type="primary" 
-                onClick={() => router.push('/course')}
-                className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-md transition duration-300"
-              >
-                Ir a Cursos
-              </Button>
+            <Progress
+              percent={Math.round(((currentStep + 1) / 6) * 100)}
+              status="active"
+              strokeColor={{
+                '0%': '#108ee9',
+                '100%': '#87d068',
+              }}
+              className="mb-8"
+            />
+
+            <div className="text-center">
+              <Spin indicator={<LoadingOutlined style={{ fontSize: 36 }} spin />} />
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                Procesando: {currentStep + 1} de 6...
+              </p>
             </div>
           </div>
-        ) : (
+        </div>
+      ) : results ? (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-8">
+            <Result
+              title={<span className="dark:text-white">¡Gestión académica creada exitosamente!</span>}
+              subTitle={<span className="dark:text-gray-300">La nueva gestión académica {results.new_management_year} ha sido configurada con todos los elementos necesarios.</span>}
+              icon={<CheckCircleFilled style={{ color: '#52c41a', fontSize: '72px' }} />}
+              extra={[]}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+              <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                <div className="flex items-center">
+                  <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-full mr-4">
+                    <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Cursos creados</p>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_courses}</p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-gradient-to-r from-green-50 to-green-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                <div className="flex items-center">
+                  <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full mr-4">
+                    <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Materias asignadas</p>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_curricula}</p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-gradient-to-r from-purple-50 to-purple-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                <div className="flex items-center">
+                  <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-full mr-4">
+                    <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Docentes asignados</p>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_assignments}</p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                <div className="flex items-center">
+                  <div className="bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full mr-4">
+                    <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Estudiantes matriculados</p>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_registrations}</p>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="flex justify-center mt-8 col-span-full">
+                <Button
+                  type="primary" 
+                  key="home" 
+                  onClick={() => router.push('/')}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  size="large"
+                >
+                  Ir a Inicio
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-0 p-8">
           <Form
             form={form}
             layout="vertical"
@@ -251,9 +320,9 @@ const AcademicYear = () => {
               newManagementYear: sourceManagement.management + 1
             }}
           >
-            <div className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
-                Configuración de la Nueva Gestión
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                Configuración de la nueva gestión
               </h2>
 
               <Form.Item 
@@ -272,18 +341,19 @@ const AcademicYear = () => {
               >
                 <Input 
                   type="number" 
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                   min={sourceManagement.management + 1}
+                  size="large"
                 />
               </Form.Item>
             </div>
 
-            <div className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
-                Fechas de la Gestión
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                Fechas de la gestión académica
               </h2>
               
-              <Row gutter={16} className="mb-6">
+              <Row gutter={24} className="mb-6">
                 <Col span={12}>
                   <Form.Item
                     label={<span className="text-gray-700 dark:text-gray-300">Fecha de inicio</span>}
@@ -291,17 +361,18 @@ const AcademicYear = () => {
                     rules={[{ required: true, message: 'Este campo es requerido' }]}
                   >
                     <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                       disabledDate={(current) => {
                         const year = form.getFieldValue('newManagementYear');
                         return current && current.year() !== year;
                       }}
+                      size="large"
                     />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={<span className="text-gray-700 dark:text-gray-300">Fecha de fin</span>}
+                    label={<span className="text-gray-700 dark:text-gray-300">Fecha de finalización</span>}
                     name={['quarterDates', 'end_date']}
                     rules={[{ 
                       required: true, 
@@ -316,200 +387,202 @@ const AcademicYear = () => {
                     }]}
                   >
                     <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                       disabledDate={(current) => {
                         const year = form.getFieldValue('newManagementYear');
                         return current && current.year() !== year;
                       }}
+                      size="large"
                     />
                   </Form.Item>
                 </Col>
               </Row>
 
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
                 Trimestres
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Primer Trimestre */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-700 dark:text-gray-300">Primer Trimestre</h4>
-                  <Form.Item
-                    label={<span className="text-sm text-gray-600 dark:text-gray-400">Inicio</span>}
-                    name={['quarterDates', 'first_quarter_start']}
-                    rules={[{ 
-                      required: true, 
-                      message: 'Este campo es requerido',
-                      validator: (_, value) => {
-                        const startDate = form.getFieldValue(['quarterDates', 'start_date']);
-                        if (value && startDate && value.isBefore(startDate)) {
-                          return Promise.reject('Debe ser posterior a la fecha de inicio de gestión');
+                <Card className="border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800">
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-lg text-gray-800 dark:text-white">Primer Trimestre</h4>
+                    <Form.Item
+                      label={<span className="text-gray-600 dark:text-gray-300">Fecha de Inicio</span>}
+                      name={['quarterDates', 'first_quarter_start']}
+                      rules={[{ 
+                        required: true, 
+                        message: 'Este campo es requerido',
+                        validator: (_, value) => {
+                          const startDate = form.getFieldValue(['quarterDates', 'start_date']);
+                          if (value && startDate && value.isBefore(startDate)) {
+                            return Promise.reject('Debe ser posterior al inicio de la gestión');
+                          }
+                          return Promise.resolve();
                         }
-                        return Promise.resolve();
-                      }
-                    }]}
-                  >
-                    <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline text-sm"
-                      disabledDate={(current) => {
-                        const year = form.getFieldValue('newManagementYear');
-                        return current && current.year() !== year;
-                      }}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    label={<span className="text-sm text-gray-600 dark:text-gray-400">Fin</span>}
-                    name={['quarterDates', 'first_quarter_end']}
-                    rules={[{ 
-                      required: true, 
-                      message: 'Este campo es requerido',
-                      validator: (_, value) => {
-                        const startDate = form.getFieldValue(['quarterDates', 'first_quarter_start']);
-                        if (value && startDate && value.isBefore(startDate)) {
-                          return Promise.reject('Debe ser posterior a la fecha de inicio');
+                      }]}
+                    >
+                      <DatePicker 
+                        className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabledDate={(current) => {
+                          const year = form.getFieldValue('newManagementYear');
+                          return current && current.year() !== year;
+                        }}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label={<span className="text-gray-600 dark:text-gray-300">Fecha de Finalización</span>}
+                      name={['quarterDates', 'first_quarter_end']}
+                      rules={[{ 
+                        required: true, 
+                        message: 'Este campo es requerido',
+                        validator: (_, value) => {
+                          const startDate = form.getFieldValue(['quarterDates', 'first_quarter_start']);
+                          if (value && startDate && value.isBefore(startDate)) {
+                            return Promise.reject('Debe ser posterior a la fecha de inicio');
+                          }
+                          return Promise.resolve();
                         }
-                        return Promise.resolve();
-                      }
-                    }]}
-                  >
-                    <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline text-sm"
-                      disabledDate={(current) => {
-                        const year = form.getFieldValue('newManagementYear');
-                        return current && current.year() !== year;
-                      }}
-                    />
-                  </Form.Item>
-                </div>
+                      }]}
+                    >
+                      <DatePicker 
+                        className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabledDate={(current) => {
+                          const year = form.getFieldValue('newManagementYear');
+                          return current && current.year() !== year;
+                        }}
+                      />
+                    </Form.Item>
+                  </div>
+                </Card>
 
                 {/* Segundo Trimestre */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-700 dark:text-gray-300">Segundo Trimestre</h4>
-                  <Form.Item
-                    label={<span className="text-sm text-gray-600 dark:text-gray-400">Inicio</span>}
-                    name={['quarterDates', 'second_quarter_start']}
-                    rules={[{ 
-                      required: true, 
-                      message: 'Este campo es requerido',
-                      validator: (_, value) => {
-                        const prevEnd = form.getFieldValue(['quarterDates', 'first_quarter_end']);
-                        if (value && prevEnd && value.isBefore(prevEnd)) {
-                          return Promise.reject('Debe ser posterior al primer trimestre');
+                <Card className="border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800">
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-lg text-gray-800 dark:text-white">Segundo Trimestre</h4>
+                    <Form.Item
+                      label={<span className="text-gray-600 dark:text-gray-300">Fecha de Inicio</span>}
+                      name={['quarterDates', 'second_quarter_start']}
+                      rules={[{ 
+                        required: true, 
+                        message: 'Este campo es requerido',
+                        validator: (_, value) => {
+                          const prevEnd = form.getFieldValue(['quarterDates', 'first_quarter_end']);
+                          if (value && prevEnd && value.isBefore(prevEnd)) {
+                            return Promise.reject('Debe ser posterior al primer trimestre');
+                          }
+                          return Promise.resolve();
                         }
-                        return Promise.resolve();
-                      }
-                    }]}
-                  >
-                    <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline text-sm"
-                      disabledDate={(current) => {
-                        const year = form.getFieldValue('newManagementYear');
-                        return current && current.year() !== year;
-                      }}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    label={<span className="text-sm text-gray-600 dark:text-gray-400">Fin</span>}
-                    name={['quarterDates', 'second_quarter_end']}
-                    rules={[{ 
-                      required: true, 
-                      message: 'Este campo es requerido',
-                      validator: (_, value) => {
-                        const startDate = form.getFieldValue(['quarterDates', 'second_quarter_start']);
-                        if (value && startDate && value.isBefore(startDate)) {
-                          return Promise.reject('Debe ser posterior a la fecha de inicio');
+                      }]}
+                    >
+                      <DatePicker 
+                        className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabledDate={(current) => {
+                          const year = form.getFieldValue('newManagementYear');
+                          return current && current.year() !== year;
+                        }}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label={<span className="text-gray-600 dark:text-gray-300">Fecha de Finalización</span>}
+                      name={['quarterDates', 'second_quarter_end']}
+                      rules={[{ 
+                        required: true, 
+                        message: 'Este campo es requerido',
+                        validator: (_, value) => {
+                          const startDate = form.getFieldValue(['quarterDates', 'second_quarter_start']);
+                          if (value && startDate && value.isBefore(startDate)) {
+                            return Promise.reject('Debe ser posterior a la fecha de inicio');
+                          }
+                          return Promise.resolve();
                         }
-                        return Promise.resolve();
-                      }
-                    }]}
-                  >
-                    <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline text-sm"
-                      disabledDate={(current) => {
-                        const year = form.getFieldValue('newManagementYear');
-                        return current && current.year() !== year;
-                      }}
-                    />
-                  </Form.Item>
-                </div>
+                      }]}
+                    >
+                      <DatePicker 
+                        className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabledDate={(current) => {
+                          const year = form.getFieldValue('newManagementYear');
+                          return current && current.year() !== year;
+                        }}
+                      />
+                    </Form.Item>
+                  </div>
+                </Card>
 
                 {/* Tercer Trimestre */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-700 dark:text-gray-300">Tercer Trimestre</h4>
-                  <Form.Item
-                    label={<span className="text-sm text-gray-600 dark:text-gray-400">Inicio</span>}
-                    name={['quarterDates', 'third_quarter_start']}
-                    rules={[{ 
-                      required: true, 
-                      message: 'Este campo es requerido',
-                      validator: (_, value) => {
-                        const prevEnd = form.getFieldValue(['quarterDates', 'second_quarter_end']);
-                        if (value && prevEnd && value.isBefore(prevEnd)) {
-                          return Promise.reject('Debe ser posterior al segundo trimestre');
+                <Card className="border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800">
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-lg text-gray-800 dark:text-white">Tercer Trimestre</h4>
+                    <Form.Item
+                      label={<span className="text-gray-600 dark:text-gray-300">Fecha de Inicio</span>}
+                      name={['quarterDates', 'third_quarter_start']}
+                      rules={[{ 
+                        required: true, 
+                        message: 'Este campo es requerido',
+                        validator: (_, value) => {
+                          const prevEnd = form.getFieldValue(['quarterDates', 'second_quarter_end']);
+                          if (value && prevEnd && value.isBefore(prevEnd)) {
+                            return Promise.reject('Debe ser posterior al segundo trimestre');
+                          }
+                          return Promise.resolve();
                         }
-                        return Promise.resolve();
-                      }
-                    }]}
-                  >
-                    <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline text-sm"
-                      disabledDate={(current) => {
-                        const year = form.getFieldValue('newManagementYear');
-                        return current && current.year() !== year;
-                      }}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    label={<span className="text-sm text-gray-600 dark:text-gray-400">Fin</span>}
-                    name={['quarterDates', 'third_quarter_end']}
-                    rules={[{ 
-                      required: true, 
-                      message: 'Este campo es requerido',
-                      validator: (_, value) => {
-                        const startDate = form.getFieldValue(['quarterDates', 'third_quarter_start']);
-                        if (value && startDate && value.isBefore(startDate)) {
-                          return Promise.reject('Debe ser posterior a la fecha de inicio');
+                      }]}
+                    >
+                      <DatePicker 
+                        className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabledDate={(current) => {
+                          const year = form.getFieldValue('newManagementYear');
+                          return current && current.year() !== year;
+                        }}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label={<span className="text-gray-600 dark:text-gray-300">Fecha de finalización</span>}
+                      name={['quarterDates', 'third_quarter_end']}
+                      rules={[{ 
+                        required: true, 
+                        message: 'Este campo es requerido',
+                        validator: (_, value) => {
+                          const startDate = form.getFieldValue(['quarterDates', 'third_quarter_start']);
+                          if (value && startDate && value.isBefore(startDate)) {
+                            return Promise.reject('Debe ser posterior a la fecha de inicio');
+                          }
+                          const endDate = form.getFieldValue(['quarterDates', 'end_date']);
+                          if (value && endDate && value.isAfter(endDate)) {
+                            return Promise.reject('No puede ser posterior al fin de la gestión');
+                          }
+                          return Promise.resolve();
                         }
-                        const endDate = form.getFieldValue(['quarterDates', 'end_date']);
-                        if (value && endDate && value.isAfter(endDate)) {
-                          return Promise.reject('No puede ser posterior a la fecha de fin de gestión');
-                        }
-                        return Promise.resolve();
-                      }
-                    }]}
-                  >
-                    <DatePicker 
-                      className="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline text-sm"
-                      disabledDate={(current) => {
-                        const year = form.getFieldValue('newManagementYear');
-                        return current && current.year() !== year;
-                      }}
-                    />
-                  </Form.Item>
-                </div>
+                      }]}
+                    >
+                      <DatePicker 
+                        className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        disabledDate={(current) => {
+                          const year = form.getFieldValue('newManagementYear');
+                          return current && current.year() !== year;
+                        }}
+                      />
+                    </Form.Item>
+                  </div>
+                </Card>
               </div>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex justify-center mt-8">
               <Button
                 type="primary"
                 onClick={handleSubmit}
                 loading={loading}
                 disabled={loading}
-                className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-md transition duration-300"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg transition duration-300 text-lg"
+                size="large"
               >
-                Crear Nueva Gestión
+                Crear gestión académica
               </Button>
             </div>
-
-            {progress && (
-              <div className="text-center mt-4">
-                <Spin tip={progress} className="dark:text-gray-300" />
-              </div>
-            )}
           </Form>
-        )}
-      </div>
+        </Card>
+      )}
     </div>
   );
 };

@@ -16,25 +16,6 @@ const CourseClient = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl">Cursos y Materias</h1>
         <div className="space-x-4">
-          {isCurrentYear && (
-            <>
-              {/* Botón para abrir el modal de "Agregar Materia" */}
-              <button
-                onClick={() => setShowSubjectModal(true)}
-                className="px-4 py-2 bg-blue-900 text-white rounded-md shadow-md hover:bg-blue-800"
-              >
-                Agregar Materia
-              </button>
-
-              {/* Botón para abrir el modal de "Gestionar Materias" */}
-              <button
-                onClick={() => setShowManageSubjectsModal(true)}
-                className="px-4 py-2 bg-yellow-600 text-white rounded-md shadow-md hover:bg-blue-900"
-              >
-                Materias
-              </button>
-            </>
-          )}
         </div>
       </div>
 
