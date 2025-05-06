@@ -10,51 +10,58 @@ let menuData: Menu[] = [
     title: "Home",
     path: "/",
     newTab: false,
-    roles: ['student', 'professor', 'admin', 'tutor'] 
+    roles: ['student', 'admin', 'tutor'] 
   },
   {
     id: 2,
-    title: "Cursos",
-    path: "/course",
-    roles: ['professor', 'admin'],
+    title: "Mis Cursos",
+    path: "/professor",
+    roles: ['professor'],
     newTab: false,
   },
   {
-    id: 3,
+    id: 4,
+    title: "Tutoría",
+    path: "/tutorship",
+    roles: ['tutor'],
+    newTab: false,
+  },
+  {
+    id: 6,
+    title: "Cursos",
+    path: "/course",
+    roles: ['admin'],
+    newTab: false,
+  },
+  {
+    id: 7,
     title: "Profesores",
     path: "/user",
     roles: ['admin'],
     newTab: false,
   },
   {
-    id: 4,
-    title: "Tutoria",
-    path: "/tutorship",
-    roles: ['tutor', 'professor'],
-    newTab: false,
-  },
-  {
-    id: 5,
+    id: 8,
     title: "Tutor",
     newTab: false,
     roles: ['admin'],
     submenu: [
       {
-        id: 51,
+        id: 81,
         title: "Tutores Disponibles",
         path: "/tutor/1",
         newTab: false,
         roles: ['admin']
       },
       {
-        id: 52,
+        id: 82,
         title: "Solicitudes Pendientes",
         path: "/tutor/2",
         newTab: false,
         roles: ['admin'] 
       },
       {
-        id: 53,
+        id: 83,
         title: "Solicitudes Rechazados",
         path: "/tutor/0",
         newTab: false,
@@ -63,21 +70,21 @@ let menuData: Menu[] = [
     ]
   },
   {
-    id: 6,
+    id: 9,
     title: "Academico",
     path: "/academic",
     roles: ['admin'],
     newTab: false,
   },
   {
-    id: 7,
+    id: 10,
     title: "Inicio",
     path: "/management",
     roles: ['admin'],
     newTab: false,
   },
   {
-    id: 8,
+    id: 11,
     title: "Gestion",
     newTab: false,
     roles: ['admin'],
@@ -98,7 +105,7 @@ export const updateMenuDataWithManagements = async (userRoles: string[] = []) =>
     }));
 
     let updatedMenu = menuData.map((menu) => {
-      if (menu.id === 8) {
+      if (menu.id === 11) {
         return {
           ...menu,
           submenu: managementSubmenu,
@@ -108,7 +115,7 @@ export const updateMenuDataWithManagements = async (userRoles: string[] = []) =>
     });
 
     updatedMenu = updatedMenu.map((menu) => {
-      if (menu.id === 8) {
+      if (menu.id === 11) {
         return {
           ...menu,
           title: `Gestion: ${managementGlobal.year}`,
