@@ -20,6 +20,13 @@ let menuData: Menu[] = [
     newTab: false,
   },
   {
+    id: 3,
+    title: "Cursos",
+    path: "/student",
+    roles: ['student', 'tutor'],
+    newTab: false,
+  },
+  {
     id: 4,
     title: "Tutoría",
     path: "/tutorship",
