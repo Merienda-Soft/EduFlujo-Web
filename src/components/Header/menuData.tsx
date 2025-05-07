@@ -90,6 +90,13 @@ let menuData: Menu[] = [
     roles: ['admin'],
     submenu: [],
   },
+  {
+    id: 100,
+    title: 'Reportes',
+    path: '/professor/reports',
+    roles: ['professor'],
+    newTab: false,
+  },
 ];
 
 export const updateMenuDataWithManagements = async (userRoles: string[] = []) => {
