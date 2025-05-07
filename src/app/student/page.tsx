@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Breadcrumb from "../../components/Common/Breadcrumb";
 import { managementGlobal } from "../../utils/globalState";
 import { getStudents } from "../../utils/studentsService";
-import { getTutorByEmail } from "../../utils/tutorshipService";
+import { getTutorByEmail, getStudentByEmail } from "../../utils/tutorshipService";
 import Swal from "sweetalert2";
 
 export default function StudentHomePage() {
@@ -29,6 +29,7 @@ export default function StudentHomePage() {
         
         if (role === "tutor") {
           const tutorResponse = await getTutorByEmail(user.email);
+          
           if (tutorResponse) {
             const tutorId = tutorResponse.id;
             const studentsResponse = await getStudents(tutorId, "tutor", 1);
@@ -42,15 +43,19 @@ export default function StudentHomePage() {
             }
           }
         } else {
-          const studentId = user.sub?.split("|")[1];
-          if (studentId) {
-            const studentResponse = await getStudents(Number(studentId), "student", 1);
-            if (studentResponse.ok && studentResponse.data) {
-              setStudentData(studentResponse.data);
+          const studentResponse = await getStudentByEmail(user.email);
+          if (studentResponse) {
+            const studentId = studentResponse.id;
+            const studentsResponse = await getStudents(studentId, "student", 1);
+            console.log('Respuesta de estudiantes (estudiante):', studentsResponse);
+            if (studentsResponse.ok && studentsResponse.data) {
+              setStudentData(studentsResponse.data);
+              setSelectedStudent(studentsResponse.data);
             }
           }
         }
       } catch (error: any) {
+        console.error('Error en fetchData:', error);
         Swal.fire("Error", error.message || "No se pudieron cargar los datos");
       } finally {
         setLoading(false);
@@ -80,13 +85,17 @@ export default function StudentHomePage() {
 
   // Renderizar cursos y materias
   const renderCursos = useMemo(() => {
+    
     const currentStudent = hasRole(["tutor"]) ? selectedStudent : studentData;
+    
     if (!currentStudent?.courses?.length) {
       return (
         <div className="text-center text-gray-500 py-12">No hay cursos asignados</div>
       );
     }
+    
     const courseData = currentStudent.courses[0];
+    
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mt-6">
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">

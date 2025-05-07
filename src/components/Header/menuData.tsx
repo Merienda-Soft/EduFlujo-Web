@@ -10,7 +10,7 @@ let menuData: Menu[] = [
     title: "Home",
     path: "/",
     newTab: false,
-    roles: ['student', 'admin', 'tutor'] 
+    roles: ['admin'] 
   },
   {
     id: 2,
@@ -30,7 +30,7 @@ let menuData: Menu[] = [
     id: 4,
     title: "Tutoría",
     path: "/tutorship",
-    roles: ['tutor'],
+    roles: [],
     newTab: false,
   },
   {
