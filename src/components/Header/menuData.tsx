@@ -48,60 +48,28 @@ let menuData: Menu[] = [
     newTab: false,
   },
   {
-<<<<<<< HEAD
-    id: 4,
-    title: "Tutoria",
-    path: "/tutorship",
-    roles: ['tutor', 'professor'],
-    newTab: false,
-  },
-  {
-    id: 5,
-    title: "Academico",
-    path: "/academic",
-    roles: ['admin'],
-    newTab: false,
-  },
-  {
-    id: 6,
-    title: "Solicitudes",
-=======
     id: 8,
     title: "Tutor",
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
     newTab: false,
     roles: ['admin'],
     submenu: [
       {
-<<<<<<< HEAD
-        id: 61,
-=======
         id: 81,
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
         title: "Tutores Disponibles",
         path: "/tutor/1",
         newTab: false,
         roles: ['admin']
       },
       {
-<<<<<<< HEAD
-        id: 62,
-=======
         id: 82,
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
         title: "Solicitudes Pendientes",
         path: "/tutor/2",
         newTab: false,
         roles: ['admin'] 
       },
       {
-<<<<<<< HEAD
-        id: 63,
-        title: "Solicitudes Rechazadas",
-=======
         id: 83,
         title: "Solicitudes Rechazados",
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
         path: "/tutor/0",
         newTab: false,
         roles: ['admin'] 
@@ -109,9 +77,6 @@ let menuData: Menu[] = [
     ]
   },
   {
-<<<<<<< HEAD
-    id: 7,
-=======
     id: 9,
     title: "Academico",
     path: "/academic",
@@ -127,7 +92,6 @@ let menuData: Menu[] = [
   },
   {
     id: 11,
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
     title: "Gestion",
     newTab: false,
     roles: ['admin'],
@@ -155,11 +119,7 @@ export const updateMenuDataWithManagements = async (userRoles: string[] = []) =>
     }));
 
     let updatedMenu = menuData.map((menu) => {
-<<<<<<< HEAD
-      if (menu.id === 7) {
-=======
       if (menu.id === 11) {
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
         return {
           ...menu,
           submenu: managementSubmenu,
@@ -169,11 +129,7 @@ export const updateMenuDataWithManagements = async (userRoles: string[] = []) =>
     });
 
     updatedMenu = updatedMenu.map((menu) => {
-<<<<<<< HEAD
-      if (menu.id === 7) {
-=======
       if (menu.id === 11) {
->>>>>>> 177d2a1f6baf5095fabcfb317226180aced0e02a
         return {
           ...menu,
           title: `Gestion: ${managementGlobal.year}`,
