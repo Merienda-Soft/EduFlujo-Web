@@ -2,48 +2,68 @@
 import Cookies from 'js-cookie';
 import { getYearManagements } from '../utils/managementService';
 
-// Definición del tipo para managementGlobal
 interface ManagementGlobal {
   id: number;
-  year: number;
-  [key: string]: any; // Para propiedades adicionales
+  year: number; 
+  status: number;
+  [key: string]: any;
 }
 
-export let managementGlobal: ManagementGlobal | null = null;
+export let managementGlobal: ManagementGlobal = {
+  id: 0,
+  year: 0,
+  status: 0
+};
 
-export const setManagementGlobal = (data: ManagementGlobal | null) => {
-  managementGlobal = data;
+export const setManagementGlobal = (data: Partial<ManagementGlobal>) => {
+  managementGlobal = { ...managementGlobal, ...data };
   Cookies.set('managementGlobal', JSON.stringify(managementGlobal), {
-    expires: 1, 
+    expires: 1,
     sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production'
   });
 };
 
-// Función para obtener la gestión activa (con id y year)
 const getActiveManagement = async (): Promise<ManagementGlobal> => {
   try {
     const managements = await getYearManagements();
-    const activeManagement = managements?.find((m: any) => m.status === 1);
+    
+    if (!managements || managements.length === 0) {
+      return {
+        id: 0,
+        year: 0,
+        status: 0
+      };
+    }
+
+
+    const activeManagement = managements.find((m: any) => m.status === 1);
+    console.log('Gestión activa:', activeManagement);
     
     if (activeManagement) {
       return {
         id: activeManagement.id,
         year: activeManagement.management,
-        ...activeManagement 
+        status: activeManagement.status
       };
     }
     
+    const latestManagement = managements.reduce((prev, current) => 
+      (prev.id > current.id) ? prev : current
+    );
+    
     return {
-      id: 0, 
-      year: new Date().getFullYear()
+      id: latestManagement.id,
+      year: latestManagement.management.toString(),
+      status: latestManagement.status
     };
     
   } catch (error) {
     console.error('Error al obtener gestión activa:', error);
     return {
       id: 0,
-      year: new Date().getFullYear()
+      year: 0,
+      status: 0
     };
   }
 };
@@ -51,27 +71,38 @@ const getActiveManagement = async (): Promise<ManagementGlobal> => {
 const initializeManagement = async () => {
   const stored = Cookies.get('managementGlobal');
   
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed && typeof parsed.year === 'number' && typeof parsed.id === 'number') {
-        managementGlobal = parsed;
-        return;
-      }
-    } catch (e) {
-      console.warn('Cookie inválida, se regenerará');
+  const currentManagements = await getYearManagements();
+  const storedManagement = stored ? JSON.parse(stored) : null;
+  
+  if (storedManagement && storedManagement.id) {
+    const isValid = currentManagements.some(m => m.id === storedManagement.id);
+    if (isValid) {
+      managementGlobal = storedManagement;
+      return;
     }
   }
-  
+
   managementGlobal = await getActiveManagement();
   Cookies.set('managementGlobal', JSON.stringify(managementGlobal));
 };
+
 
 if (typeof window !== 'undefined') {
   initializeManagement();
 }
 
-// Función helper para obtener el ID de la gestión actual
 export const getCurrentManagementId = (): number => {
   return managementGlobal?.id ?? 0;
+};
+
+export const refreshManagementGlobal = async () => {
+  managementGlobal = await getActiveManagement();
+  Cookies.set('managementGlobal', JSON.stringify(managementGlobal));
+  return managementGlobal;
+};
+
+
+export const findManagementByYear = async (year: string) => {
+  const managements = await getYearManagements();
+  return managements.find(m => m.management.toString() === year);
 };

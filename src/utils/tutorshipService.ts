@@ -15,7 +15,7 @@ export const validateDocument = async (frontImage, backImage) => {
         'Content-Type': 'multipart/form-data',
       },
     });
-    console.log('Response:', response.data);
+    console.log('Response from validate_document:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al validar documento:', error);
@@ -35,6 +35,33 @@ export const getTutorShipByStatus = async (value: number) => {
     }
 };
 
+export const createTutorWithTutorship = async (tutorshipData) => {
+    console.log('Tutorship data:', tutorshipData); 
+    try {
+      const { url, config } = httpRequestFactory.createRequest('/tutor-student/tutorship', 'POST', tutorshipData);
+      const response = await fetch(url, config);
+      const responseData = await response.json(); 
+      if (!response.ok) throw new Error(responseData.error);
+       return responseData;
+     } catch (error) {
+       console.error('Hubo un error al registrar los dato de tutor:', error);
+       throw error;
+     }
+};
+
+export const getStudentsRudeOrCi = async (studentData) => {
+  try{
+    const { url, config } = httpRequestFactory.createRequest('/tutor-student/students/rude_ci', 'POST', studentData);
+    const response = await fetch(url, config);
+    if (!response.ok) throw new Error('Error al obtener la información del estudiante');
+    return await response.json();
+  }
+  catch (error) {
+    console.error('Error al obtener la información del estudiante:', error);
+    throw error;
+  }
+};
+
 export const createTutor = async (tutorshipData) => {
     try {
       const { url, config } = httpRequestFactory.createRequest('/tutor-student', 'POST', tutorshipData);
@@ -48,7 +75,6 @@ export const createTutor = async (tutorshipData) => {
 };
 
 export const createTutorShip = async (tutorshipData) => {
-  console.log('Inscripcion Data:', tutorshipData);
   try {
     const { url, config } = httpRequestFactory.createRequest('/tutor-student/request', 'POST', tutorshipData);
     const response = await fetch(url, config);
@@ -107,8 +133,3 @@ export const getCourseByDegree = async (degree_id: number) => {
     throw error;
   }
 };
-
-
-
-
-//http://localhost:3001/api/tutor-student/email/sasaprimesa@gmail.com

@@ -1,6 +1,6 @@
 'use client';
-import { useState, useRef } from 'react';
-import { validateDocument, createTutor } from '../../utils/tutorshipService';
+import { useState, useRef, useEffect } from 'react';
+import { validateDocument, createTutorWithTutorship, getStudentsRudeOrCi } from '../../utils/tutorshipService';
 import { uploadTutorDocuments } from '../../utils/firebaseService';
 import Swal from 'sweetalert2';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,11 +8,68 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface DocumentValidationResult {
   success: boolean;
   is_valid: boolean;
-  front_score: number;
-  back_score: number;
+  data: {
+    raw_texts: {
+      front: string | null;  
+      back: string | null;  
+    };
+  };
   details?: any;
   error: string;
 }
+
+interface StudentData {
+  rude: string;
+  ci: string | null;
+  id?: number;
+}
+
+const extractDocumentData = (rawTexts: {front: string | null, back: string | null}) => {
+  const result: any = {};
+  
+  if (rawTexts.back) {
+    const nameMatch = rawTexts.back.match(/A: ([A-ZÑ ]+) fl/);
+    if (nameMatch) {
+      const fullName = nameMatch[1].trim();
+      const nameParts = fullName.split(' ');
+      result.name = nameParts.slice(0, -2).join(' '); 
+      result.lastname = nameParts[nameParts.length - 2];
+      result.second_lastname = nameParts[nameParts.length - 1]; 
+    }
+
+    const birthDateMatch = rawTexts.back.match(/Nacido el (\d+ de \w+ de \d{4})/);
+    if (birthDateMatch) {
+      const spanishDate = birthDateMatch[1];
+      const months: {[key: string]: string} = {
+        'Enero': '01', 'Febrero': '02', 'Marzo': '03', 'Abril': '04',
+        'Mayo': '05', 'Junio': '06', 'Julio': '07', 'Agosto': '08',
+        'Septiembre': '09', 'Octubre': '10', 'Noviembre': '11', 'Diciembre': '12'
+      };
+      
+      const parts = spanishDate.split(' de ');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = months[parts[1]] || '01';
+        const year = parts[2];
+        result.birth_date = `${year}-${month}-${day}`;
+      }
+    }
+
+    const ciMatch = rawTexts.front?.match(/No (\d{7})/);
+    if (ciMatch) {
+      result.ci = ciMatch[1];
+    }
+
+    const locationMatch = rawTexts.back.match(/-En ([A-Z ]+) - ([A-Z ]+) -([A-Z ]+)\. gb/);
+    if (locationMatch) {
+      result.departamento = locationMatch[1].trim();
+      result.provincia = locationMatch[2].trim();
+      result.localidad = locationMatch[3].trim();
+    }
+  }
+
+  return result;
+};
 
 const TutorRegister = () => {
   const [tutorData, setTutorData] = useState({
@@ -39,9 +96,23 @@ const TutorRegister = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [currentStep, setCurrentStep] = useState<'validation' | 'form'>('validation');
+  const [studentsData, setStudentsData] = useState<StudentData[]>([{ rude: '', ci: null }]);
+  const [relacion, setRelacion] = useState<string>('Padre');
+  const [isFetchingIds, setIsFetchingIds] = useState(false);
 
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (validationResult?.is_valid && validationResult.data?.raw_texts) {
+      const extractedData = extractDocumentData(validationResult.data.raw_texts);
+      setTutorData(prev => ({
+        ...prev,
+        ...extractedData,
+        pais: 'BOLIVIA' 
+      }));
+    }
+  }, [validationResult]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -99,11 +170,9 @@ const TutorRegister = () => {
       
       if (result.success) {
         setValidationResult(result);
-        
         if (result.is_valid) {
           setCurrentStep('form');
         }
-
       } else {
         Swal.fire({
           icon: 'error',
@@ -120,6 +189,57 @@ const TutorRegister = () => {
       });
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  const addAnotherStudent = () => {
+    setStudentsData([...studentsData, { rude: '', ci: null }]);
+  };
+
+  const removeStudent = (index: number) => {
+    if (studentsData.length > 1) {
+      const newStudents = [...studentsData];
+      newStudents.splice(index, 1);
+      setStudentsData(newStudents);
+    }
+  };
+
+  const handleStudentDataChange = (index: number, field: 'rude' | 'ci', value: string) => {
+    const newStudents = [...studentsData];
+    newStudents[index][field] = value === '' ? null : value;
+    setStudentsData(newStudents);
+  };
+
+  const fetchStudentIds = async () => {
+    try {
+      setIsFetchingIds(true);
+      const studentIds: number[] = [];
+      
+      for (const student of studentsData) {
+        if (!student.rude) continue;
+        
+        const response = await getStudentsRudeOrCi({
+          rude: student.rude,
+          ci: student.ci
+        });
+        
+        if (response.id) {
+          studentIds.push(response.id);
+        } else {
+          throw new Error(`No se encontró estudiante con RUDE: ${student.rude}`);
+        }
+      }
+      
+      if (studentIds.length === 0) {
+        throw new Error('No se encontraron estudiantes con los datos proporcionados');
+      }
+      
+      return studentIds;
+    } catch (error) {
+      console.error('Error al obtener IDs de estudiantes:', error);
+      throw error;
+    } finally {
+      setIsFetchingIds(false);
     }
   };
 
@@ -147,6 +267,13 @@ const TutorRegister = () => {
     try {
       setIsSubmitting(true);
       
+      // Validar que al menos un RUDE esté completo
+      const hasValidRude = studentsData.some(student => student.rude.trim() !== '');
+      if (!hasValidRude) {
+        throw new Error('Debe ingresar al menos un RUDE de estudiante');
+      }
+
+      // 1. Subir imágenes a Firebase
       const uploadResult = await uploadTutorDocuments(
         {
           name: tutorData.name,
@@ -162,43 +289,30 @@ const TutorRegister = () => {
         throw new Error(uploadResult.error || 'Error al subir imágenes');
       }
 
-      const result = await createTutor({
+      // 2. Obtener IDs de estudiantes
+      const studentIds = await fetchStudentIds();
+
+      // 3. Crear tutor con tutorías
+      const result = await createTutorWithTutorship({
         ...tutorData,
         url_imagefront: uploadResult.frontImageUrl || '',
-        url_imageback: uploadResult.backImageUrl || ''
+        url_imageback: uploadResult.backImageUrl || '',
+        studentIds,
+        relacion
       });
       
       if (result.success) {
         Swal.fire({
           icon: 'success',
           title: 'Registro exitoso',
-          text: `Se envio un correo de confirmación al correo proporcionado ${tutorData.email}, recuerda verificar tu bandeja de entrada para activar tu cuenta.`,
+          html: `
+            <p>Se envió un correo de confirmación a <strong>${tutorData.email}</strong></p>
+            <p class="mt-2">Tutorías creadas: ${result.tutorships.length}</p>
+          `,
         });
         
         // Resetear formulario
-        setTutorData({
-          name: '',
-          lastname: '',
-          second_lastname: '',
-          gender: 'M',
-          ci: '',
-          birth_date: '',
-          email: '',
-          pais: 'BOLIVIA',
-          departamento: '',
-          provincia: '',
-          localidad: '',
-          url_imagefront: '',
-          url_imageback: ''
-        });
-        setFrontImage(null);
-        setBackImage(null);
-        setFrontPreview('');
-        setBackPreview('');
-        setValidationResult(null);
-        setCurrentStep('validation');
-        if (frontInputRef.current) frontInputRef.current.value = '';
-        if (backInputRef.current) backInputRef.current.value = '';
+        resetForm();
       } else {
         throw new Error(result.error || 'Error al registrar el tutor');
       }
@@ -212,6 +326,34 @@ const TutorRegister = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setTutorData({
+      name: '',
+      lastname: '',
+      second_lastname: '',
+      gender: 'M',
+      ci: '',
+      birth_date: '',
+      email: '',
+      pais: 'BOLIVIA',
+      departamento: '',
+      provincia: '',
+      localidad: '',
+      url_imagefront: '',
+      url_imageback: ''
+    });
+    setStudentsData([{ rude: '', ci: null }]);
+    setRelacion('Padre');
+    setFrontImage(null);
+    setBackImage(null);
+    setFrontPreview('');
+    setBackPreview('');
+    setValidationResult(null);
+    setCurrentStep('validation');
+    if (frontInputRef.current) frontInputRef.current.value = '';
+    if (backInputRef.current) backInputRef.current.value = '';
   };
 
   const goBackToValidation = () => {
@@ -446,7 +588,7 @@ const TutorRegister = () => {
                     
                     <div className="space-y-6">
                       {/* Sección Nombre Completo */}
-                      <h3>Datos Personales:</h3>
+                      <h3>Nombres y Apellidos:</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <input
@@ -492,8 +634,8 @@ const TutorRegister = () => {
                       </div>
                       
                       {/* Sección Documentos */}
-                      <h3>Datos de Identidad:</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <h3>Identidad y Contacto:</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                           <input
                             type="text"
@@ -532,16 +674,28 @@ const TutorRegister = () => {
                                       transition duration-200 text-gray-700 dark:text-gray-300"
                           >
                             <option value="" disabled hidden>Seleccione género</option>
-                            <option value="M">Masculino</option>
-                            <option value="F">Femenino</option>
-                            <option value="O">Otro</option>
+                            <option value="M">MASCULINO</option>
+                            <option value="F">FEMENINO</option>
                           </select>
+                        </div>
+                        <div>
+                          <input
+                            type="email"
+                            name="email"
+                            value={tutorData.email}
+                            onChange={handleInputChange}
+                            placeholder="Correo Electrónico"
+                            required
+                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
+                                      hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
+                                      transition duration-200 placeholder-gray-500 dark:placeholder-gray-400"
+                          />
                         </div>
                       </div>
                       
                       {/* Ubicación */}
-                      <h3>Ubicación y Contacto:</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <h3>Ubicación:</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                           <input
                             type="text"
@@ -583,10 +737,6 @@ const TutorRegister = () => {
                                       transition duration-200 placeholder-gray-500 dark:placeholder-gray-400"
                           />
                         </div>
-                      </div>
-                      
-                      {/* Adicional */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <input
                             type="text"
@@ -600,19 +750,89 @@ const TutorRegister = () => {
                                       transition duration-200 placeholder-gray-500 dark:placeholder-gray-400"
                           />
                         </div>
-                        <div>
-                          <input
-                            type="email"
-                            name="email"
-                            value={tutorData.email}
-                            onChange={handleInputChange}
-                            placeholder="Correo Electrónico"
-                            required
-                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
-                                      hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
-                                      transition duration-200 placeholder-gray-500 dark:placeholder-gray-400"
-                          />
+                      </div>
+                      
+                      {/* Datos de Tutoría */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                          Datos de Tutoría
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Parentesco
+                            </label>
+                            <select
+                              value={relacion}
+                              onChange={(e) => setRelacion(e.target.value)}
+                              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
+                                        hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
+                                        transition duration-200 text-gray-700 dark:text-gray-300"
+                            >
+                              <option value="PADRE">PADRE</option>
+                              <option value="MADRE">MADRE</option>
+                              <option value="TUTOR">TUTOR</option>
+                              <option value="APODERADO">APODERADO</option>
+                            </select>
+                          </div>
                         </div>
+                        
+                        <h5 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          Estudiantes
+                        </h5>
+                        
+                        {studentsData.map((student, index) => (
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
+                            <div>
+                              <input
+                                type="text"
+                                value={student.rude}
+                                onChange={(e) => handleStudentDataChange(index, 'rude', e.target.value)}
+                                placeholder="RUDE"
+                                required
+                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
+                                          hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
+                                          transition duration-200 placeholder-gray-500 dark:placeholder-gray-400"
+                              />
+                            </div>
+                            
+                            <div>
+                              <input
+                                type="text"
+                                value={student.ci || ''}
+                                onChange={(e) => handleStudentDataChange(index, 'ci', e.target.value)}
+                                placeholder="Carnet de Identidad"
+                                required
+                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
+                                          hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
+                                          transition duration-200 placeholder-gray-500 dark:placeholder-gray-400"
+                              />
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              {studentsData.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeStudent(index)}
+                                  className="px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition"
+                                >
+                                  -
+                                </button>
+                              )}
+                              
+                              {index === studentsData.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={addAnotherStudent}
+                                  className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition"
+                                >
+                                  +
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -620,14 +840,22 @@ const TutorRegister = () => {
                   <div className="flex justify-end">
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isFetchingIds}
                       className={`px-6 py-2 rounded-md text-white font-medium ${
-                        isSubmitting
+                        isSubmitting || isFetchingIds
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-green-600 hover:bg-green-700'
                       } transition`}
                     >
-                      {isSubmitting ? 'Registrando...' : 'Registrar Tutor'}
+                      {isSubmitting || isFetchingIds ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          {isFetchingIds ? 'Buscando estudiantes...' : 'Registrando...'}
+                        </span>
+                      ) : 'Registrar Tutor'}
                     </button>
                   </div>
                 </form>

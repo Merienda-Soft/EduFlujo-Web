@@ -30,7 +30,6 @@ export const getYearManagements = async () => {
         const { url, config } = httpRequestFactory.createRequest('/management/year');
         const response = await fetch(url, config);
         if (!response.ok) throw new Error('Error al obtener las gestiones');
-        console.log('Response:', response.json);
         return await response.json();
     } catch (error) {
         console.error(error);

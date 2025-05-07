@@ -5,6 +5,7 @@ import { uploadPdf, getInscriptionsByCourseId, createInscripcion, updateInscripc
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { managementGlobal } from '../../utils/globalState';
+import { AutocompleteInput } from './AutocompleteInput';
 
 interface RegistrationModalProps {
   show: boolean;
@@ -15,9 +16,9 @@ interface RegistrationModalProps {
 interface Student {
   rude: string;
   ci: string;
-  name: string;
   lastname: string;
   second_lastname: string;
+  name: string;
   gender: string;
   datebirth: string;
   pais: string;
@@ -28,6 +29,21 @@ interface Student {
   isExisting?: boolean;
   registrationId?: number;
 }
+
+const splitFullName = (fullName: string) => {
+  const parts = fullName.trim().split(/\s+/);
+  
+  let lastname = parts[0] || '';
+  let second_lastname = parts[1] || '';
+  let name = parts.slice(2).join(' ') || '';
+  
+  return { lastname, second_lastname, name };
+};
+
+// Función para unir los componentes en nombre completo
+const joinFullName = (lastname: string, second_lastname: string, name: string) => {
+  return `${lastname} ${second_lastname} ${name}`.trim();
+};
 
 const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, courseId }) => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -44,12 +60,16 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
         
         const formattedStudents = existingInscriptions.map((ins: any) => {
           const person = ins.student?.person || {};
+          const { lastname, second_lastname, name } = splitFullName(
+            `${person.lastname || ''} ${person.second_lastname || ''} ${person.name || ''}`
+          );
+          
           return {
             rude: ins.student?.rude || '',
             ci: person.ci || '',
-            name: `${person.lastname || ''} ${person.second_lastname || ''} ${person.name || ''}`.trim(),
-            lastname: person.lastname || '',
-            second_lastname: person.second_lastname || '',
+            lastname,
+            second_lastname,
+            name,
             gender: person.gender?.trim() || '',
             datebirth: person.birth_date ? new Date(person.birth_date).toISOString().split('T')[0] : '',
             pais: person.town?.province?.departament?.country?.country || '',
@@ -92,7 +112,6 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   const parseSpanishDate = (dateString: string): string => {
     if (!dateString) return '';
     
-    // Mapeo de meses en español a números
     const months: Record<string, string> = {
       'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04',
       'may': '05', 'jun': '06', 'jul': '07', 'ago': '08',
@@ -134,7 +153,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
       
       pdfData.forEach((student: any) => {
         const existingIndex = mergedStudents.findIndex(s => s.rude === student.rude);
-        const fullName = `${student.name || ''} ${student.lastname || ''} ${student.second_lastname || ''}`.trim();
+        const { lastname, second_lastname, name } = splitFullName(
+          `${student.lastname || ''} ${student.second_lastname || ''} ${student.name || ''}`
+        );
         
         const parsedDate = student.datebirth ? parseSpanishDate(student.datebirth) : '';
         
@@ -142,13 +163,17 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
           mergedStudents[existingIndex] = {
             ...mergedStudents[existingIndex],
             ...student,
-            name: fullName,
+            lastname,
+            second_lastname,
+            name,
             datebirth: parsedDate || mergedStudents[existingIndex].datebirth
           };
         } else {
           mergedStudents.push({
             ...student,
-            name: fullName,
+            lastname,
+            second_lastname,
+            name,
             datebirth: parsedDate,
             isExisting: false
           });
@@ -171,11 +196,6 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
       ...updated[index],
       [field]: value
     };
-
-    if (field === 'lastname' || field === 'second_lastname') {
-      updated[index].name = `${updated[index].name.split(' ')[0] || ''} ${updated[index].lastname || ''} ${updated[index].second_lastname || ''}`.trim();
-    }
-
     setStudents(updated);
   };
 
@@ -197,9 +217,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
       {
         rude: '',
         ci: '',
-        name: '',
         lastname: '',
         second_lastname: '',
+        name: '',
         gender: '',
         datebirth: '',
         pais: '',
@@ -221,30 +241,24 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
 
       if (studentsToUpdate.length > 0) {
         const updatePayload = {
-          registrationUpdates: studentsToUpdate.map(student => {
-            const nameParts = student.name.trim().split(/\s+/);
-            const lastname = nameParts[0] || '';
-            const second_lastname = nameParts[1] || '';
-            const name = nameParts.slice(2).join(' ') || '';
-            return {
-              registrationId: student.registrationId,
-              data: {
-                rude: student.rude,
-                ci: student.ci, 
-                name: name,
-                lastname: lastname,
-                second_lastname: second_lastname,
-                gender: student.gender, 
-                datebirth: student.datebirth,
-                pais: student.pais,
-                departamento: student.departamento,
-                provincia: student.provincia,
-                localidad: student.localidad,
-                matricula: student.matricula
-              }
-            };
+          registrationUpdates: studentsToUpdate.map(student => ({
+            registrationId: student.registrationId,
+            data: {
+              rude: student.rude,
+              ci: student.ci, 
+              name: student.name,
+              lastname: student.lastname,
+              second_lastname: student.second_lastname,
+              gender: student.gender, 
+              datebirth: student.datebirth,
+              pais: student.pais,
+              departamento: student.departamento,
+              provincia: student.provincia,
+              localidad: student.localidad,
+              matricula: student.matricula
+            }
           })
-        };
+        )};
         console.log('Update Payload:', updatePayload);
         await updateInscripcion(updatePayload);
       }
@@ -254,7 +268,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
           dataAssignment: studentsToCreate.map(student => ({
             rude: student.rude,
             ci: student.ci,
-            name: student.name,
+            name: joinFullName(student.lastname, student.second_lastname, student.name), // Concatenar aquí
             gender: student.gender,
             datebirth: student.datebirth,
             pais: student.pais,
@@ -285,39 +299,39 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   return (
     <Modal show={show} onClose={onClose} title="Inscripción de Estudiantes">
       <div className="flex flex-col space-y-4 dark:text-white">
-      {isCurrentYear && (
-        <div className="flex justify-between items-center">
-          <div className="flex space-x-2">
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={handleFileChange}
-              className="hidden"
-              id="fileInput"
-            />
-            <label
-              htmlFor="fileInput"
-              className="p-2 cursor-pointer bg-blue-700 text-white rounded hover:bg-blue-600 text-sm dark:bg-blue-600 dark:hover:bg-blue-700"
-            >
-              Seleccionar PDF
-            </label>
+        {isCurrentYear && (
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-2">
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileChange}
+                className="hidden"
+                id="fileInput"
+              />
+              <label
+                htmlFor="fileInput"
+                className="p-2 cursor-pointer bg-blue-700 text-white rounded hover:bg-blue-600 text-sm dark:bg-blue-600 dark:hover:bg-blue-700"
+              >
+                Seleccionar PDF
+              </label>
+              <button
+                onClick={handleAddRow}
+                className="p-2 bg-yellow-600 text-white rounded hover:bg-yellow-500 text-sm dark:bg-yellow-700 dark:hover:bg-yellow-600"
+                disabled={isLoading}
+              >
+                <FontAwesomeIcon icon={faPlus} /> Agregar fila
+              </button>
+            </div>
             <button
-              onClick={handleAddRow}
-              className="p-2 bg-yellow-600 text-white rounded hover:bg-yellow-500 text-sm dark:bg-yellow-700 dark:hover:bg-yellow-600"
-              disabled={isLoading}
+              onClick={handleRegisterInscriptions}
+              className="p-2 bg-green-700 text-white rounded hover:bg-green-600 text-sm dark:bg-green-600 dark:hover:bg-green-700"
+              disabled={isLoading || students.length === 0}
             >
-              <FontAwesomeIcon icon={faPlus} /> Agregar fila
+              {isLoading ? 'Procesando...' : 'Registrar Inscripciones'}
             </button>
           </div>
-          <button
-            onClick={handleRegisterInscriptions}
-            className="p-2 bg-green-700 text-white rounded hover:bg-green-600 text-sm dark:bg-green-600 dark:hover:bg-green-700"
-            disabled={isLoading || students.length === 0}
-          >
-            {isLoading ? 'Procesando...' : 'Registrar Inscripciones'}
-          </button>
-        </div>
-      )}
+        )}
 
         {!isCurrentYear && (
           <div className="text-center py-4 text-white-500 dark:text-white-400">
@@ -336,11 +350,13 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
         {students.length > 0 && (
           <div className="overflow-x-auto max-h-96 border border-gray-300 rounded-lg dark:border-gray-700">
             <table className="min-w-full text-sm table-fixed border-collapse bg-white dark:bg-gray-800">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">RUDE</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">CI</th>
-                  <th className="p-2 border border-gray-300 dark:border-gray-600">Nombre</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600">A. Paterno</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600">A. Materno</th>
+                  <th className="p-2 border border-gray-300 dark:border-gray-600 w-30">Nombres</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-5">Género</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">Nacimiento</th>
                   <th className="p-2 border border-gray-300 dark:border-gray-600 w-20">País</th>
@@ -379,6 +395,24 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                       <input
                         type="text"
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 font-semibold dark:text-green-200' : 'dark:text-white'}`}
+                        value={student.lastname}
+                        onChange={(e) => handleInputChange(index, 'lastname', e.target.value)}
+                        disabled={isLoading}
+                      />
+                    </td>
+                    <td className="p-2 border border-gray-300 dark:border-gray-600">
+                      <input
+                        type="text"
+                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 font-semibold dark:text-green-200' : 'dark:text-white'}`}
+                        value={student.second_lastname}
+                        onChange={(e) => handleInputChange(index, 'second_lastname', e.target.value)}
+                        disabled={isLoading}
+                      />
+                    </td>
+                    <td className="p-2 border border-gray-300 dark:border-gray-600">
+                      <input
+                        type="text"
+                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 font-semibold dark:text-green-200' : 'dark:text-white'}`}
                         value={student.name}
                         onChange={(e) => handleInputChange(index, 'name', e.target.value)}
                         disabled={isLoading}
@@ -403,48 +437,48 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
+                      <AutocompleteInput
                         value={student.pais}
-                        onChange={(e) => handleInputChange(index, 'pais', e.target.value)}
+                        onChange={(value) => handleInputChange(index, 'pais', value)}
+                        type="pais"
                         disabled={isLoading}
+                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
+                      <AutocompleteInput
                         value={student.departamento}
-                        onChange={(e) => handleInputChange(index, 'departamento', e.target.value)}
+                        onChange={(value) => handleInputChange(index, 'departamento', value)}
+                        type="departamento"
                         disabled={isLoading}
+                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
+                      <AutocompleteInput
                         value={student.provincia}
-                        onChange={(e) => handleInputChange(index, 'provincia', e.target.value)}
+                        onChange={(value) => handleInputChange(index, 'provincia', value)}
+                        type="provincia"
                         disabled={isLoading}
+                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
+                      <AutocompleteInput
                         value={student.localidad}
-                        onChange={(e) => handleInputChange(index, 'localidad', e.target.value)}
+                        onChange={(value) => handleInputChange(index, 'localidad', value)}
+                        type="localidad"
                         disabled={isLoading}
+                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
-                        value={student.matricula}
-                        onChange={(e) => handleInputChange(index, 'matricula', e.target.value)}
-                        disabled={isLoading}
+                      <AutocompleteInput
+                          value={student.matricula}
+                          onChange={(value) => handleInputChange(index, 'matricula', value)}
+                          type="matricula"
+                          disabled={isLoading}
+                          className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600 text-center">
