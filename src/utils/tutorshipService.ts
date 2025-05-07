@@ -110,6 +110,18 @@ export const getTutorByEmail = async (email: string) => {
   }
 };
 
+export const getStudentByEmail = async (email: string) => {
+  try {
+    const { url, config } = httpRequestFactory.createRequest(`/tutor-student/student/email/${email}`);
+    const response = await fetch(url, config);
+    if (!response.ok) throw new Error('Error al obtener la informacion del tutor');
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener la informacion del tutor:', error);
+    throw error;
+  }
+};
+
 export const getStudentsByCourse = async (course_id: number) => {
   try {
     const { url, config } = httpRequestFactory.createRequest(`/tutor-student/course/${course_id}`);
