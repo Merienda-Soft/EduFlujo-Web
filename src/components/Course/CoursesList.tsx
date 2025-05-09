@@ -9,6 +9,7 @@ import { getDegree } from '../../utils/managementService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faEdit, faEye } from '@fortawesome/free-solid-svg-icons';
 import { managementGlobal } from '../../utils/globalState';
+import { httpRequestFactory } from '../../utils/HttpRequestFactory';
 
 interface Degree {
   id: number;
@@ -95,11 +96,14 @@ const CoursesList = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/course');
-      if (!response.ok) throw new Error('Error al obtener cursos');
-      const data: Course[] = await response.json();
+      setLoading(true);
+        const { url, config } = httpRequestFactory.createRequest('/courses'); // Cambiado a '/courses'
+        const response = await fetch(url, config);
+        
+        if (!response.ok) throw new Error('Error al obtener cursos');
+        
+        const data = await response.json();
       
-      // Filtrar por el año de gestión global
       const activeCourses = data.filter(course => 
         course.management.management === managementGlobal.year
       );
