@@ -97,7 +97,7 @@ const CoursesList = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-        const { url, config } = httpRequestFactory.createRequest('/courses'); // Cambiado a '/courses'
+        const { url, config } = httpRequestFactory.createRequest('/course'); // Cambiado a '/courses'
         const response = await fetch(url, config);
         
         if (!response.ok) throw new Error('Error al obtener cursos');
