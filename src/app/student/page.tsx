@@ -9,6 +9,9 @@ import { managementGlobal } from "../../utils/globalState";
 import { getStudents } from "../../utils/studentsService";
 import { getTutorByEmail, getStudentByEmail } from "../../utils/tutorshipService";
 import Swal from "sweetalert2";
+import { getYearManagements } from "../../utils/managementService";
+import { setManagementGlobal } from "../../utils/globalState";
+import Cookies from 'js-cookie';
 
 export default function StudentHomePage() {
   const { user, isLoading } = useUser();
@@ -18,22 +21,20 @@ export default function StudentHomePage() {
   const [studentData, setStudentData] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [activeManagement, setActiveManagement] = useState<any>(managementGlobal);
+  const [managements, setManagements] = useState([]);
+  const [selectedManagement, setSelectedManagement] = useState(null);
   const [tutorStatus, setTutorStatus] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (!user?.email) return;
       setLoading(true);
       try {
-        const role = user["https://eduflujo.com/roles"]?.[0];
-        
-        if (role === "tutor") {
+        if (hasRole(["tutor"])) {
           const tutorResponse = await getTutorByEmail(user.email);
-          
           if (tutorResponse) {
             const tutorId = tutorResponse.id;
-            const studentsResponse = await getStudents(tutorId, "tutor", 1);
-            
+            const studentsResponse = await getStudents(tutorId, "tutor", selectedManagement || managementGlobal.id);
             if (studentsResponse.ok && studentsResponse.data) {
               setTutorStatus(studentsResponse.data.tutor.status);
               setStudentData(studentsResponse.data.students);
@@ -44,28 +45,70 @@ export default function StudentHomePage() {
           }
         } else {
           const studentResponse = await getStudentByEmail(user.email);
+          console.log('auth:', studentResponse);
           if (studentResponse) {
             const studentId = studentResponse.id;
-            const studentsResponse = await getStudents(studentId, "student", 1);
-            console.log('Respuesta de estudiantes (estudiante):', studentsResponse);
+            const studentsResponse = await getStudents(studentId, "student", selectedManagement || managementGlobal.id);
+            console.log('Respuesta de estudiante:', studentResponse);
             if (studentsResponse.ok && studentsResponse.data) {
               setStudentData(studentsResponse.data);
               setSelectedStudent(studentsResponse.data);
             }
           }
         }
-      } catch (error: any) {
-        console.error('Error en fetchData:', error);
-        Swal.fire("Error", error.message || "No se pudieron cargar los datos");
+      } catch (e) {
+        console.error('Error:', e);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudieron cargar los datos del estudiante.',
+        });
       } finally {
         setLoading(false);
       }
     };
+    if (user?.email && !isLoading) fetchData();
+  }, [user, isLoading, selectedManagement]);
 
-    if (!isLoading) {
-      fetchData();
+  // Inicializar gestión activa desde cookie o globalState
+  useEffect(() => {
+    let initialManagement = null;
+    const stored = Cookies.get('managementGlobal');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed.year === 'number' && typeof parsed.id === 'number') {
+          initialManagement = parsed.id;
+        }
+      } catch {}
     }
-  }, [user, isLoading]);
+    if (!initialManagement && managementGlobal?.id) {
+      initialManagement = managementGlobal.id;
+    }
+    setSelectedManagement(initialManagement);
+  }, []);
+
+  // Cargar gestiones
+  useEffect(() => {
+    const fetchManagements = async () => {
+      try {
+        const data = await getYearManagements();
+        setManagements(data);
+      } catch {}
+    };
+    fetchManagements();
+  }, []);
+
+  // Manejar cambio de gestión
+  const handleManagementChange = (e) => {
+    const id = Number(e.target.value);
+    const selected = managements.find((m) => m.id === id);
+    if (selected) {
+      setManagementGlobal({ id: selected.id, year: selected.management });
+      setSelectedManagement(selected.id);
+      window.location.reload();
+    }
+  };
 
   // Opciones para el combo de estudiantes (tutor)
   const studentOptions = useMemo(() => {
@@ -163,7 +206,28 @@ export default function StudentHomePage() {
     <div className="">
       <Breadcrumb pageName="Cursos" description={`Gestión ${activeManagement?.management || "Actual"}`} />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 ">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div>
+            <span className="font-semibold">Gestión activa:</span>{' '}
+            <span className="text-primary font-bold">
+              {managements.find(m => m.id === selectedManagement)?.management || '---'}
+            </span>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <label className="mr-2 font-medium">Cambiar gestión:</label>
+            <select
+              className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+              value={selectedManagement || ''}
+              onChange={handleManagementChange}
+            >
+              <option value="" disabled>Selecciona una gestión</option>
+              {managements.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.management} {m.status === 1 ? '(Activa)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
           {hasRole(["tutor"]) && studentOptions.length > 0 && (
             <div className="flex items-center gap-2">
               <label htmlFor="student-select" className="text-sm font-medium text-gray-700 dark:text-gray-200">Estudiante:</label>
