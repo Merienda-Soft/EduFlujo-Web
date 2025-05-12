@@ -226,9 +226,16 @@ const CoursesList = () => {
           >
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex justify-between items-start">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-                  {course.course}
-                </h2>
+                <div className="flex items-center">
+                  <img
+                    src="/images/cursos.jpg"
+                    alt="Curso"
+                    className="w-12 h-12 rounded-full mr-4"
+                  />
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                    {course.course}
+                  </h2>
+                </div>
                 <button
                   onClick={() => handleViewDetails(course.id)}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"

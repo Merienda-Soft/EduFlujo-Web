@@ -47,7 +47,6 @@ const TutorControl = () => {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    // Verificar que el router esté listo
     if (!router.isReady) return;
 
     const statusNumber = Number(status);
@@ -163,7 +162,6 @@ const TutorControl = () => {
                       </ul>
                     </div>
                   </div>
-
                   {/* Acciones según el estado */}
                   <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                     {status === '2' && (
@@ -191,6 +189,15 @@ const TutorControl = () => {
                       >
                         <FontAwesomeIcon icon={faSyncAlt} />
                         <span>Reactivar Solicitud</span>
+                      </button>
+                    )}
+                    {status === '1' && (
+                      <button
+                        onClick={() => handleStatusUpdate(tutor.id, 0)}
+                        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded flex items-center justify-center space-x-2 transition"
+                      >
+                        <FontAwesomeIcon icon={faSyncAlt} className="mr-2" />
+                        <span>Remitir Tutoría</span>
                       </button>
                     )}
                   </div>

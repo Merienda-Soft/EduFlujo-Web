@@ -255,6 +255,17 @@ const TutorControl = () => {
                         </button>
                       </div>
                     )}
+                    {status === '1' && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleStatusUpdate(tutor.id, 0)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 py-1 px-3 rounded flex items-center space-x-1 transition text-sm"
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                          <span>Remitir Tutoria</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
