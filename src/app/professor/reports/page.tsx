@@ -113,7 +113,7 @@ export default function ReportsPage() {
             {groupedCourses.map((curso: any, idx: number) => (
               <div key={idx} className="rounded-xl bg-gradient-to-br from-cyan-100/80 to-white dark:from-cyan-900/40 dark:to-gray-800 shadow-lg p-6 border border-cyan-200 dark:border-cyan-800">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-lg font-bold text-cyan-800 dark:text-cyan-200">{curso.course} {curso.parallel}</span>
+                  <span className="text-lg font-bold text-cyan-800 dark:text-cyan-200">{curso.course}</span>
                   <button
                     onClick={() => handleCourseReport(curso)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-400 text-cyan-700 dark:text-cyan-200 bg-cyan-50 dark:bg-cyan-900/30 hover:bg-cyan-100 dark:hover:bg-cyan-800 transition-colors font-semibold text-sm"
