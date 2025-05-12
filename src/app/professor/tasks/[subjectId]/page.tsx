@@ -6,7 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCap
 import { getActivities, createActivity, updateActivity, deleteActivity } from '../../../../utils/tasksService';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { getProfessorByEmail } from '../../../../utils/tasksService';
-import { getCurrentManagementData, isCurrentManagementActive } from '../../../../utils/globalState';
+import { getManagementGlobal } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
 
 // Task filters
@@ -27,6 +27,7 @@ export default function TasksPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUser();
+  const managementGlobal = getManagementGlobal();
   const [professor, setProfessor] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,10 +42,12 @@ export default function TasksPage() {
   const [formData, setFormData] = useState({
     name: '',
     date: '',
+    startDate: '',
     ponderacion: '',
     descripcion: '',
     tipo: '1',
-    type: 0 // 0 = tarea para entregar, 1 = tarea solo para calificar
+    type: 0, // 0 = tarea para entregar, 1 = tarea solo para calificar
+    isPastTask: false // Nueva opción para tareas pasadas
   });
 
   // Estado para edición
@@ -87,7 +90,7 @@ export default function TasksPage() {
           params.subjectId.toString(),
           courseId.toString(),
           professor.id.toString(),
-          getCurrentManagementData()?.id.toString()
+          managementGlobal?.id.toString()
         );
         const normalized = activities.map(normalizeTask);
         setTasks(normalized);
@@ -107,7 +110,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     const currentMonth = new Date().getMonth();
-    setCurrentDate(new Date(getCurrentManagementData()?.management || new Date().getFullYear(), currentMonth, 1));
+    setCurrentDate(new Date(managementGlobal?.year || new Date().getFullYear(), currentMonth, 1));
   }, []);
 
   const handlePrevMonth = () => {
@@ -183,8 +186,8 @@ export default function TasksPage() {
   };
 
   const validateForm = () => {
-    const { name, date, ponderacion, descripcion } = formData;
-    if (!name || !date || !ponderacion || !descripcion) {
+    const { name, date, startDate, ponderacion, descripcion, isPastTask } = formData;
+    if (!name || !ponderacion || !descripcion) {
       setFormError('Por favor, completa todos los campos requeridos.');
       return false;
     }
@@ -193,18 +196,37 @@ export default function TasksPage() {
       return false;
     }
     const pondValue = Number(ponderacion);
-    if (isNaN(pondValue) || pondValue <= 0 || pondValue > 100) {
+    if (isNaN(pondValue) || pondValue < 1 || pondValue > 100) {
       setFormError('La ponderación debe ser un número entre 1 y 100.');
       return false;
     }
-    // Validar fechas
-    const now = new Date();
-    const endDate = new Date(formData.date);
-    endDate.setHours(23, 59, 59, 999);
-    if (endDate <= now) {
-      setFormError('La fecha de entrega debe ser posterior a la fecha y hora actual.');
-      return false;
+
+    // Validar fechas según el tipo de tarea
+    if (isPastTask) {
+      if (!startDate || !date) {
+        setFormError('Por favor, completa ambas fechas para la tarea pasada.');
+        return false;
+      }
+      const start = new Date(startDate);
+      const end = new Date(date);
+      if (end < start) {
+        setFormError('La fecha de fin debe ser posterior a la fecha de inicio.');
+        return false;
+      }
+    } else {
+      if (!date) {
+        setFormError('Por favor, ingresa la fecha de entrega.');
+        return false;
+      }
+      const now = new Date();
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      if (endDate <= now) {
+        setFormError('La fecha de entrega debe ser posterior a la fecha y hora actual.');
+        return false;
+      }
     }
+
     setFormError('');
     return true;
   };
@@ -216,7 +238,7 @@ export default function TasksPage() {
         subjectId.toString(),
         courseId.toString(),
         professorId.toString(),
-        getCurrentManagementData()?.id.toString()
+        managementGlobal?.id.toString()
       );
       const normalized = activities.map(normalizeTask);
       setTasks(normalized);
@@ -239,14 +261,20 @@ export default function TasksPage() {
   const modalButton = isEditing ? (updating ? 'Actualizando...' : 'Actualizar Tarea') : (creating ? 'Creando...' : 'Crear Tarea');
 
   const openEditModal = (task) => {
+    const startDate = new Date(task.startDate);
+    const endDate = new Date(task.endDate);
+    const isPastTask = startDate < new Date();
+    
     setEditTask(task);
     setFormData({
       name: task.name,
       date: task.endDate ? task.endDate.slice(0, 10) : '',
+      startDate: task.startDate ? task.startDate.slice(0, 10) : '',
       ponderacion: String(task.weight),
       descripcion: task.description,
       tipo: String(task.dimension_id),
-      type: task.type
+      type: task.type,
+      isPastTask: isPastTask
     });
     setShowCreateModal(true);
   };
@@ -255,7 +283,16 @@ export default function TasksPage() {
     setShowCreateModal(false);
     setEditTask(null);
     setFormError('');
-    setFormData({ name: '', date: '', ponderacion: '', descripcion: '', tipo: '1', type: 0 });
+    setFormData({
+      name: '',
+      date: '',
+      startDate: '',
+      ponderacion: '',
+      descripcion: '',
+      tipo: '1',
+      type: 0,
+      isPastTask: false
+    });
   };
 
   const handleCreateOrUpdateTask = async (e) => {
@@ -269,10 +306,11 @@ export default function TasksPage() {
     setFormError('');
     try {
       const now = new Date();
-      const startDate = isEditing ? editTask.startDate : now.toISOString();
+      const startDate = formData.isPastTask ? formData.startDate : now.toISOString();
       const endDate = new Date(formData.date);
       endDate.setHours(23, 59, 59, 999);
       const endDateISO = endDate.toISOString();
+
       if (isEditing) {
         // UPDATE
         const updatePayload = {
@@ -280,14 +318,14 @@ export default function TasksPage() {
             name: formData.name,
             description: formData.descripcion,
             dimension_id: Number(formData.tipo),
-            management_id: Number(getCurrentManagementData()?.id),
+            management_id: Number(managementGlobal?.id),
             professor_id: Number(professor.id),
             subject_id: Number(params.subjectId),
             course_id: courseId,
             weight: Number(formData.ponderacion),
             is_autoevaluation: 0,
             quarter: 'Q1',
-            start_date: editTask.startDate,
+            start_date: formData.isPastTask ? formData.startDate : editTask.startDate,
             end_date: endDateISO
         };
         await updateActivity(editTask.id, updatePayload);
@@ -305,7 +343,7 @@ export default function TasksPage() {
             name: formData.name,
             description: formData.descripcion,
             dimension_id: Number(formData.tipo),
-            management_id: Number(getCurrentManagementData()?.id),
+            management_id: Number(managementGlobal?.id),
             professor_id: Number(professor.id),
             subject_id: Number(params.subjectId),
             course_id: courseId,
@@ -405,7 +443,7 @@ export default function TasksPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tareas</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Gestión {getCurrentManagementData()?.management}
+              Gestión {managementGlobal?.year}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -451,12 +489,83 @@ export default function TasksPage() {
               <input type="text" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.name} onChange={e => handleInputChange('name', e.target.value)} required maxLength={100} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Entrega *</label>
-              <input type="date" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.date} onChange={e => handleInputChange('date', e.target.value)} required />
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  id="past-task"
+                  checked={formData.isPastTask}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      isPastTask: e.target.checked,
+                      startDate: e.target.checked ? prev.startDate : '',
+                      date: e.target.checked ? prev.date : ''
+                    }));
+                  }}
+                  className="form-checkbox h-5 w-5 text-blue-600"
+                />
+                <label htmlFor="past-task" className="text-sm text-gray-700 dark:text-gray-300">
+                  Crear tarea pasada
+                </label>
+              </div>
+              {formData.isPastTask ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Inicio *</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      value={formData.startDate}
+                      onChange={e => handleInputChange('startDate', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Fin *</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      value={formData.date}
+                      onChange={e => handleInputChange('date', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Entrega *</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.date}
+                    onChange={e => handleInputChange('date', e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Ponderación (%) *</label>
-              <input type="number" min={1} max={100} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.ponderacion} onChange={e => handleInputChange('ponderacion', e.target.value)} required />
+              <input 
+                type="number" 
+                min={1} 
+                max={100} 
+                step={1}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                value={formData.ponderacion} 
+                onChange={e => {
+                  const value = e.target.value;
+                  if (value === '' || (Number(value) >= 1 && Number(value) <= 100)) {
+                    handleInputChange('ponderacion', value);
+                  }
+                }} 
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required 
+              />
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Área de Evaluación *</label>
