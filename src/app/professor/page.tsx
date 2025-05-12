@@ -7,7 +7,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import Breadcrumb from '../../components/Common/Breadcrumb';
 import { getProfessorByEmail, getActivities } from '../../utils/tasksService';
 import { getYearManagements } from '../../utils/managementService';
-import { managementGlobal, setManagementGlobal } from '../../utils/globalState';
+import { getManagementGlobal, setManagementGlobal } from '../../utils/globalState';
 import Cookies from 'js-cookie';
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 
@@ -71,7 +71,7 @@ export default function ProfessorCoursesPage() {
   const [taskFilter, setTaskFilter] = useState('ALL');
   const [currentDate, setCurrentDate] = useState(() => {
     const currentMonth = new Date().getMonth();
-    return new Date(managementGlobal?.year || new Date().getFullYear(), currentMonth, 1);
+    return new Date(getManagementGlobal()?.year || new Date().getFullYear(), currentMonth, 1);
   });
 
   // Inicializar gestión activa desde cookie o globalState
@@ -86,8 +86,8 @@ export default function ProfessorCoursesPage() {
         }
       } catch {}
     }
-    if (!initialManagement && managementGlobal?.id) {
-      initialManagement = managementGlobal.id;
+    if (!initialManagement && getManagementGlobal()?.id) {
+      initialManagement = getManagementGlobal().id;
     }
     setSelectedManagement(initialManagement);
   }, []);

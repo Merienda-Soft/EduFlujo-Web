@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Breadcrumb from "../../../../components/Common/Breadcrumb";
 import { getActivities } from "../../../../utils/tasksService";
 import { getStudentsByCourse } from "../../../../utils/attendanceService";
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { getProfessorByEmail } from '../../../../utils/tasksService';
+import { getManagementGlobal } from '../../../../utils/globalState';
 import Swal from "sweetalert2";
 
 const DIMENSIONS = [
@@ -26,7 +29,7 @@ export default function SubjectReportPage() {
   const cursoid = searchParams.get("cursoid");
   const teacherid = searchParams.get("teacherid");
   const materiaName = searchParams.get("materiaName") || "Materia";
-  const management = searchParams.get("management");
+  const management = getManagementGlobal();
 
   const [activities, setActivities] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -38,7 +41,7 @@ export default function SubjectReportPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const managementId = management ? JSON.parse(management)?.id : undefined;
+      const managementId = management?.id?.toString();
       const [activitiesData, studentsData] = await Promise.all([
         getActivities(materiaid, cursoid, teacherid, managementId),
         getStudentsByCourse(cursoid)
@@ -59,7 +62,7 @@ export default function SubjectReportPage() {
   // Filtros
   const filteredActivities = useMemo(() => {
     return activities.filter(activity => {
-      const activityDate = new Date(activity.create_date);
+      const activityDate = new Date(activity.start_date);
       const monthMatch = activityDate.getMonth() === selectedMonth;
       const dimensionMatch = !selectedDimension || activity.dimension_id === selectedDimension;
       return monthMatch && dimensionMatch;
@@ -106,7 +109,7 @@ export default function SubjectReportPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Registro de Notas</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Gestión {management ? JSON.parse(management)?.management : "Actual"}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Gestión {management?.year || "Actual"}</p>
               <p className="text-base text-gray-700 dark:text-gray-200 font-semibold mt-1">{materiaName}</p>
             </div>
             {/* Selector de mes */}
