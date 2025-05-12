@@ -5,7 +5,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
-import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from '../../../utils/globalState';
 import { getProfessorByEmail } from '../../../utils/tasksService';
 import Swal from 'sweetalert2';
 
@@ -17,16 +17,28 @@ export default function ReportsPage() {
   const [professor, setProfessor] = useState<any | null>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [error, setError] = useState('');
+  const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
+
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Cargar datos reales del profesor y cursos asignados
   useEffect(() => {
     const loadData = async () => {
-      if (!user?.email) return;
+      if (!user?.email || !selectedManagement) return;
       try {
         const data = await getProfessorByEmail(user.email);
         setProfessor(data.professor);
         // Filtrar por la gestión seleccionada
-        const filtered = (data.professor.assignments || []).filter(a => a.management_id === getCurrentManagementData().id);
+        const filtered = (data.professor.assignments || []).filter(a => a.management_id === selectedManagement);
         setAssignments(filtered);
       } catch (e) {
         setError('No se pudieron cargar los cursos.');
@@ -34,8 +46,8 @@ export default function ReportsPage() {
         setLoading(false);
       }
     };
-    if (user?.email && getCurrentManagementData().id) loadData();
-  }, [user]);
+    if (user?.email && selectedManagement) loadData();
+  }, [user, selectedManagement]);
 
   // Agrupar assignments por curso
   const groupedCourses = Object.values(assignments.reduce((acc, a) => {

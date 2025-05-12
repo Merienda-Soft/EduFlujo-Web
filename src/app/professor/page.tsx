@@ -7,7 +7,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import Breadcrumb from '../../components/Common/Breadcrumb';
 import { getProfessorByEmail, getActivities } from '../../utils/tasksService';
 import { getYearManagements } from '../../utils/managementService';
-import { getManagementGlobal, setManagementGlobal } from '../../utils/globalState';
+import { getManagementGlobal, setManagementGlobal, subscribe } from '../../utils/globalState';
 import Cookies from 'js-cookie';
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 
@@ -92,6 +92,17 @@ export default function ProfessorCoursesPage() {
     setSelectedManagement(initialManagement);
   }, []);
 
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   // Cargar gestiones
   useEffect(() => {
     const fetchManagements = async () => {
@@ -122,17 +133,6 @@ export default function ProfessorCoursesPage() {
     };
     if (user?.email && selectedManagement) fetchData();
   }, [user, selectedManagement]);
-
-  // Manejar cambio de gestión
-  const handleManagementChange = (e) => {
-    const id = Number(e.target.value);
-    const selected = managements.find((m) => m.id === id);
-    if (selected) {
-      setManagementGlobal({ id: selected.id, year: selected.management });
-      setSelectedManagement(selected.id);
-      window.location.reload();
-    }
-  };
 
   useEffect(() => {
     if (!isLoading && !hasRole(['professor'])) {
@@ -241,30 +241,6 @@ export default function ProfessorCoursesPage() {
     <>
       <Breadcrumb pageName="Cursos" description="Lista de cursos y materias asignadas al profesor" />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <span className="font-semibold">Gestión activa:</span>{' '}
-            <span className="text-primary font-bold">
-              {managements.find(m => m.id === selectedManagement)?.management || '---'}
-            </span>
-          </div>
-          <div className="mt-4 md:mt-0">
-            <label className="mr-2 font-medium">Cambiar gestión:</label>
-            <select
-              className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-              value={selectedManagement || ''}
-              onChange={handleManagementChange}
-            >
-              <option value="" disabled>Selecciona una gestión</option>
-              {managements.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.management} {m.status === 1 ? '(Activa)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <h1 className="text-3xl font-bold mb-6">Cursos</h1>
         {error && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
             <p className="font-bold">Error</p>

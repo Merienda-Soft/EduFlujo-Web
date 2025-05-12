@@ -5,7 +5,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
-import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from '../../../utils/globalState';
 import { getProfessorByEmail } from '../../../utils/tasksService';
 import {
   uploadSupportMaterial,
@@ -101,11 +101,22 @@ export default function SupportMaterialPage() {
   const [materials, setMaterials] = useState<SupportMaterial[]>([]);
   const [filter, setFilter] = useState<string>("all");
   const [uploading, setUploading] = useState(false);
+  const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const subjectId = searchParams?.get('subjectId');
   const courseId = searchParams?.get('courseId');
-  const managementId = getCurrentManagementData()?.id;
+
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Cargar datos del profesor
   useEffect(() => {
@@ -123,13 +134,13 @@ export default function SupportMaterialPage() {
 
   // Cargar materiales
   const fetchMaterials = async () => {
-    if (!courseId || !subjectId || !managementId) return;
+    if (!courseId || !subjectId || !selectedManagement) return;
     setLoading(true);
     try {
       const response = await getSupportMaterials(
         Number(courseId),
         Number(subjectId),
-        Number(managementId)
+        Number(selectedManagement)
       );
       if (response.ok && response.data) {
         setMaterials(response.data.sort((a: any, b: any) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()));
@@ -148,7 +159,7 @@ export default function SupportMaterialPage() {
   useEffect(() => {
     fetchMaterials();
     // eslint-disable-next-line
-  }, [professor, courseId, subjectId, managementId]);
+  }, [professor, courseId, subjectId, selectedManagement]);
 
   // Filtros disponibles
   const availableFilters = [
@@ -168,7 +179,7 @@ export default function SupportMaterialPage() {
 
   // Subir archivo
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !courseId || !subjectId || !managementId) return;
+    if (!e.target.files || !courseId || !subjectId || !selectedManagement) return;
     setUploading(true);
     try {
       for (let i = 0; i < e.target.files.length; i++) {
@@ -183,7 +194,7 @@ export default function SupportMaterialPage() {
         const response = await uploadSupportMaterial(
           Number(courseId),
           Number(subjectId),
-          Number(managementId),
+          Number(selectedManagement),
           fileData
         );
         if (!response.ok) {

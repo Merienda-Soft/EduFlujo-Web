@@ -6,7 +6,7 @@ import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
 import { getStudentsByCourse, registerAttendance, getAttendanceByCourseSubjectDate, updateAttendanceRecord } from '../../../utils/attendanceService';
-import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from '../../../utils/globalState';
 import { getProfessorByEmail } from '../../../utils/tasksService';
 import Swal from 'sweetalert2';
 
@@ -59,6 +59,7 @@ export default function AttendancePage() {
   const [attendanceId, setAttendanceId] = useState<number | null>(null);
   const [originalAttendances, setOriginalAttendances] = useState<AttendanceState>({});
   const [professor, setProfessor] = useState<any | null>(null);
+  const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
   const [stats, setStats] = useState({
     present: 0,
     absent: 0,
@@ -67,6 +68,17 @@ export default function AttendancePage() {
 
   const subjectId = searchParams?.get('subjectId');
   const courseId = searchParams?.get('courseId');
+
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Load professor data
   useEffect(() => {
@@ -84,7 +96,7 @@ export default function AttendancePage() {
 
   // Función para cargar estudiantes y verificar asistencias existentes
   const fetchData = async () => {
-    if (!courseId || !subjectId || !professor) return;
+    if (!courseId || !subjectId || !professor || !selectedManagement) return;
     
     setLoading(true);
     try {
@@ -162,10 +174,10 @@ export default function AttendancePage() {
   }, [isLoading, hasRole, router]);
 
   useEffect(() => {
-    if (professor) {
+    if (professor && selectedManagement) {
       fetchData();
     }
-  }, [selectedDate, professor]);
+  }, [selectedDate, professor, selectedManagement]);
 
   // Actualizar estadísticas cuando cambian las asistencias
   useEffect(() => {

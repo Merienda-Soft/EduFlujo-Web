@@ -6,7 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCap
 import { getActivities, createActivity, updateActivity, deleteActivity } from '../../../../utils/tasksService';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { getProfessorByEmail } from '../../../../utils/tasksService';
-import { getManagementGlobal } from '../../../../utils/globalState';
+import { getManagementGlobal, subscribe } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
 
 // Task filters
@@ -39,6 +39,7 @@ export default function TasksPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
+  const [selectedManagement, setSelectedManagement] = useState(managementGlobal?.id);
   const [formData, setFormData] = useState({
     name: '',
     date: '',
@@ -65,6 +66,17 @@ export default function TasksPage() {
   const courseIdRaw = searchParams?.get('courseId');
   const courseId = courseIdRaw && !isNaN(Number(courseIdRaw)) ? Number(courseIdRaw) : null;
 
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   // Load professor data
   useEffect(() => {
     const loadProfessor = async () => {
@@ -82,7 +94,7 @@ export default function TasksPage() {
   // Load tasks
   useEffect(() => {
     const loadTasks = async () => {
-      if (!professor || !params.subjectId || !courseId) return;
+      if (!professor || !params.subjectId || !courseId || !selectedManagement) return;
       setLoading(true);
       setError('');
       try {
@@ -90,7 +102,7 @@ export default function TasksPage() {
           params.subjectId.toString(),
           courseId.toString(),
           professor.id.toString(),
-          managementGlobal?.id.toString()
+          selectedManagement.toString()
         );
         const normalized = activities.map(normalizeTask);
         setTasks(normalized);
@@ -106,12 +118,12 @@ export default function TasksPage() {
       }
     };
     loadTasks();
-  }, [professor, params.subjectId, courseId]);
+  }, [professor, params.subjectId, courseId, selectedManagement]);
 
   useEffect(() => {
     const currentMonth = new Date().getMonth();
     setCurrentDate(new Date(managementGlobal?.year || new Date().getFullYear(), currentMonth, 1));
-  }, []);
+  }, [selectedManagement]);
 
   const handlePrevMonth = () => {
     setCurrentDate(prev => {
@@ -238,7 +250,7 @@ export default function TasksPage() {
         subjectId.toString(),
         courseId.toString(),
         professorId.toString(),
-        managementGlobal?.id.toString()
+        selectedManagement.toString()
       );
       const normalized = activities.map(normalizeTask);
       setTasks(normalized);
@@ -318,7 +330,7 @@ export default function TasksPage() {
             name: formData.name,
             description: formData.descripcion,
             dimension_id: Number(formData.tipo),
-            management_id: Number(managementGlobal?.id),
+            management_id: Number(selectedManagement),
             professor_id: Number(professor.id),
             subject_id: Number(params.subjectId),
             course_id: courseId,
@@ -343,7 +355,7 @@ export default function TasksPage() {
             name: formData.name,
             description: formData.descripcion,
             dimension_id: Number(formData.tipo),
-            management_id: Number(managementGlobal?.id),
+            management_id: Number(selectedManagement),
             professor_id: Number(professor.id),
             subject_id: Number(params.subjectId),
             course_id: courseId,
