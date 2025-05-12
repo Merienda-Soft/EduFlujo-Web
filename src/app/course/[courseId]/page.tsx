@@ -7,7 +7,7 @@ import Breadcrumb from '../../../components/Common/Breadcrumb';
 import RegistrationModal from '../../../components/Registration/RegistrationModal';
 import { getProfesores, getAsignacionesByCurso, updateAsignacion, createAsignacion } from '../../../utils/asignationService';
 import { getCourseById, getMaterias } from '../../../utils/courseService';
-import { managementGlobal } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
 
 type Professor = {
   id: number;
@@ -66,7 +66,6 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
   const [error, setError] = useState('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [existingAssignments, setExistingAssignments] = useState<Assignment[]>([]);
-  const isCurrentYear = managementGlobal.year === new Date().getFullYear();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -345,7 +344,7 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
                   </div>
                 </div>
               </div>
-              {isCurrentYear && (
+              {isCurrentManagementActive && (
                 <button
                   onClick={saveAssignments}
                   className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"

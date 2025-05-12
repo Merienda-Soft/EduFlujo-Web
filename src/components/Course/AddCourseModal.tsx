@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../Modal/Modal';
 import { getMaterias, createCourse } from '../../utils/courseService';
 import Swal from 'sweetalert2';
-import { managementGlobal } from '../../utils/globalState';
+import { getCurrentManagementData } from '../../utils/globalState';
 
 interface Materia {
   id: number;
@@ -90,7 +90,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
       return;
     }
 
-    if (!managementGlobal?.id) {
+    if (!getCurrentManagementData()?.id) {
       setError('No se ha configurado la gestión académica');
       setLoading(false);
       return;
@@ -100,7 +100,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
       course: `${selectedGradeId}° ${parallel}`,
       parallel: parallel,
       degree_id: selectedGradeId,
-      management_id: managementGlobal.id,
+      management_id: getCurrentManagementData().id,
       subject_ids: selectedMaterias.map((materia) => materia.id),
     };
 

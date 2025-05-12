@@ -6,7 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCap
 import { getActivities, createActivity, updateActivity, deleteActivity } from '../../../../utils/tasksService';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { getProfessorByEmail } from '../../../../utils/tasksService';
-import { managementGlobal } from '../../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
 
 // Task filters
@@ -87,7 +87,7 @@ export default function TasksPage() {
           params.subjectId.toString(),
           courseId.toString(),
           professor.id.toString(),
-          managementGlobal?.id.toString()
+          getCurrentManagementData()?.id.toString()
         );
         const normalized = activities.map(normalizeTask);
         setTasks(normalized);
@@ -107,7 +107,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     const currentMonth = new Date().getMonth();
-    setCurrentDate(new Date(managementGlobal?.year || new Date().getFullYear(), currentMonth, 1));
+    setCurrentDate(new Date(getCurrentManagementData()?.management || new Date().getFullYear(), currentMonth, 1));
   }, []);
 
   const handlePrevMonth = () => {
@@ -216,7 +216,7 @@ export default function TasksPage() {
         subjectId.toString(),
         courseId.toString(),
         professorId.toString(),
-        managementGlobal?.id.toString()
+        getCurrentManagementData()?.id.toString()
       );
       const normalized = activities.map(normalizeTask);
       setTasks(normalized);
@@ -280,7 +280,7 @@ export default function TasksPage() {
             name: formData.name,
             description: formData.descripcion,
             dimension_id: Number(formData.tipo),
-            management_id: Number(managementGlobal?.id),
+            management_id: Number(getCurrentManagementData()?.id),
             professor_id: Number(professor.id),
             subject_id: Number(params.subjectId),
             course_id: courseId,
@@ -305,7 +305,7 @@ export default function TasksPage() {
             name: formData.name,
             description: formData.descripcion,
             dimension_id: Number(formData.tipo),
-            management_id: Number(managementGlobal?.id),
+            management_id: Number(getCurrentManagementData()?.id),
             professor_id: Number(professor.id),
             subject_id: Number(params.subjectId),
             course_id: courseId,
@@ -405,7 +405,7 @@ export default function TasksPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tareas</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Gestión {managementGlobal?.year}
+              Gestión {getCurrentManagementData()?.management}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">

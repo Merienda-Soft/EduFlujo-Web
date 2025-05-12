@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import { uploadPdf, getInscriptionsByCourseId, createInscripcion, updateInscripcion } from '../../utils/registrationService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { managementGlobal } from '../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../utils/globalState';
 import { AutocompleteInput } from './AutocompleteInput';
 
 interface RegistrationModalProps {
@@ -50,7 +50,6 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   const [existingStudents, setExistingStudents] = useState<Student[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const isCurrentYear = managementGlobal.year === new Date().getFullYear();
 
   useEffect(() => {
     const fetchExistingStudents = async () => {
@@ -279,7 +278,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
           })),
           registrationData: {
             courseId: Number(courseId),
-            managementId: managementGlobal.id
+            managementId: getCurrentManagementData().id
           }
         };
         console.log('Create Payload:', createPayload);      
@@ -299,7 +298,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   return (
     <Modal show={show} onClose={onClose} title="Inscripción de Estudiantes">
       <div className="flex flex-col space-y-4 dark:text-white">
-        {isCurrentYear && (
+        {isCurrentManagementActive && (
           <div className="flex justify-between items-center">
             <div className="flex space-x-2">
               <input
@@ -333,9 +332,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
           </div>
         )}
 
-        {!isCurrentYear && (
+        {!isCurrentManagementActive && (
           <div className="text-center py-4 text-white-500 dark:text-white-400">
-            <p>Estudiantes Registrados en la gestion: {managementGlobal.year}.</p>
+            <p>Estudiantes Registrados en la gestion: {getCurrentManagementData().management}.</p>
           </div>
         )}
 
@@ -442,6 +441,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'pais', value)}
                         type="pais"
                         disabled={isLoading}
+                        placeholder="país..."
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -451,6 +451,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'departamento', value)}
                         type="departamento"
                         disabled={isLoading}
+                        placeholder="departamento..."
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -460,6 +461,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'provincia', value)}
                         type="provincia"
                         disabled={isLoading}
+                        placeholder="provincia..."
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -469,6 +471,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'localidad', value)}
                         type="localidad"
                         disabled={isLoading}
+                        placeholder="localidad..."
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -478,6 +481,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                           onChange={(value) => handleInputChange(index, 'matricula', value)}
                           type="matricula"
                           disabled={isLoading}
+                          placeholder="matricula..."
                           className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>

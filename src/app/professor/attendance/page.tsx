@@ -6,7 +6,7 @@ import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
 import { getStudentsByCourse, registerAttendance, getAttendanceByCourseSubjectDate, updateAttendanceRecord } from '../../../utils/attendanceService';
-import { managementGlobal } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
 import { getProfessorByEmail } from '../../../utils/tasksService';
 import Swal from 'sweetalert2';
 
@@ -239,7 +239,7 @@ export default function AttendancePage() {
 
   // Guardar la asistencia
   const handleSaveAttendance = async () => {
-    if (!managementGlobal?.id || !professor?.id) {
+    if (!getCurrentManagementData()?.id || !professor?.id) {
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -308,7 +308,7 @@ export default function AttendancePage() {
         const attendanceData = {
           attendance_date: dateString,
           quarter: quarter,
-          management_id: Number(managementGlobal.id),
+          management_id: Number(getCurrentManagementData().id),
           subject_id: Number(subjectId),
           professor_id: professor.id,
           course_id: Number(courseId)

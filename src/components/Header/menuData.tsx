@@ -1,7 +1,7 @@
 // data/menuData.ts
 import { Menu } from '../../types/menu';
 import { getYearManagements } from '../../utils/managementService';
-import { managementGlobal } from '../../utils/globalState';
+import { getManagementGlobal } from '../../utils/globalState';
 import { useUserRoles } from '../../utils/roleUtils';
 
 let menuData: Menu[] = [
@@ -84,13 +84,6 @@ let menuData: Menu[] = [
     newTab: false,
   },
   {
-    id: 10,
-    title: "Inicio",
-    path: "/management",
-    roles: ['admin'],
-    newTab: false,
-  },
-  {
     id: 11,
     title: "Gestion",
     newTab: false,
@@ -106,50 +99,30 @@ let menuData: Menu[] = [
   },
 ];
 
-export const updateMenuDataWithManagements = async (userRoles: string[] = []) => {
-  try {
-    const managements = await getYearManagements();
-    const managementSubmenu = managements.map((management: any) => ({
-      id: management.id,
-      title: management.management,
-      status: management.status,
-      path: `/`,
-      newTab: false,
-      roles: ['admin'] 
-    }));
+export const getUpdatedMenuData = (userRoles: string[] = []) => {
+  const { year, allManagements } = getManagementGlobal();
 
-    let updatedMenu = menuData.map((menu) => {
-      if (menu.id === 11) {
-        return {
-          ...menu,
-          submenu: managementSubmenu,
-        };
-      }
-      return menu;
-    });
+  const managementSubmenu = allManagements.map(management => ({
+    id: management.id,
+    title: management.management.toString(),
+    status: management.status,
+    path: '#',
+    newTab: false,
+    roles: ['admin']
+  }));
 
-    updatedMenu = updatedMenu.map((menu) => {
-      if (menu.id === 11) {
-        return {
-          ...menu,
-          title: `Gestion: ${managementGlobal.year}`,
-        };
-      }
-      return menu;
-    });
-
-    // Filtra el menú por roles
-    return updatedMenu.filter(menuItem => {
-      if (!menuItem.roles) return true;
-      return menuItem.roles.some(role => userRoles.includes(role));
-    });
-  } catch (error) {
-    console.error('Error updating menu data with managements:', error);
-    return menuData.filter(menuItem => {
-      if (!menuItem.roles) return true;
-      return menuItem.roles.some(role => userRoles.includes(role));
-    });
-  }
+  return menuData.map(menu => {
+    if (menu.id === 11) {
+      return {
+        ...menu,
+        title: `Gestión: ${year || 'Seleccionar'}`,
+        submenu: managementSubmenu,
+      };
+    }
+    return menu;
+  }).filter(menuItem => 
+    !menuItem.roles || menuItem.roles.some(role => userRoles.includes(role))
+  );
 };
 
 export { menuData };

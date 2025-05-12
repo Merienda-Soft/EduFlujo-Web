@@ -107,7 +107,7 @@ const UserList = () => {
         });
   
         setFilteredUsers(enrichedData);
-        setCurrentPage(1); // Resetear a la primera página cuando cambian los datos
+        setCurrentPage(1); 
       } catch (error) {
         console.error("Error:", error);
         Swal.fire("Error", "Ocurrió un error al cargar los datos", "error");

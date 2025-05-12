@@ -5,7 +5,7 @@ import { useUser } from "@auth0/nextjs-auth0/client";
 import { useUserRoles } from "../../utils/roleUtils";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "../../components/Common/Breadcrumb";
-import { managementGlobal } from "../../utils/globalState";
+import { getCurrentManagementData, isCurrentManagementActive } from "../../utils/globalState";
 import { getStudents } from "../../utils/studentsService";
 import { getTutorByEmail, getStudentByEmail } from "../../utils/tutorshipService";
 import Swal from "sweetalert2";
@@ -17,7 +17,7 @@ export default function StudentHomePage() {
   const [loading, setLoading] = useState(true);
   const [studentData, setStudentData] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [activeManagement, setActiveManagement] = useState<any>(managementGlobal);
+  const [activeManagement, setActiveManagement] = useState<any>(getCurrentManagementData());
   const [tutorStatus, setTutorStatus] = useState<number | null>(null);
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { getTasksByStudentId } from "../../../../utils/tasksService";
-import { managementGlobal } from "../../../../utils/globalState";
+import { getCurrentManagementData } from "../../../../utils/globalState";
 import Swal from "sweetalert2";
 
 const STATUS_FILTERS = {
@@ -27,7 +27,7 @@ export default function StudentTasksPage() {
   const studentId = searchParams.get("studentId");
   const courseId = searchParams.get("courseId");
   const subjectId = params.subjectId;
-  const managementId = managementGlobal?.id;
+  const managementId = getCurrentManagementData()?.id;
   const materiaName = searchParams.get("materiaName");
 
   const [searchValue, setSearchValue] = useState("");

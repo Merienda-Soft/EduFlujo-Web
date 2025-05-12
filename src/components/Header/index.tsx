@@ -5,17 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ThemeToggler from "./ThemeToggler";
-import { menuData as initialMenuData, updateMenuDataWithManagements } from "./menuData";
+import { menuData as initialMenuData } from "./menuData";
 import { useUser } from "@auth0/nextjs-auth0/client"; 
 import { destroyCookie } from 'nookies';
-import { setManagementGlobal } from '../../utils/globalState';
 import { useUserRoles } from '../../utils/roleUtils';
+import { getUpdatedMenuData } from "./menuData";
+import { getManagementGlobal, subscribe, setManagementGlobal, initializeManagement } from '../../utils/globalState';
+
 
 const Header = () => {
   const [navbarOpen, setNavbarOpen] = useState(false);
   const [sticky, setSticky] = useState(false);
   const [openIndex, setOpenIndex] = useState(-1);
-  const [menuData, setMenuData] = useState(initialMenuData);
+  const [menuData, setMenuData] = useState(getUpdatedMenuData());
   
   const { user, isLoading } = useUser();
   const { hasRole, roles } = useUserRoles();
@@ -30,11 +32,13 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
-    const initializeMenuData = async () => {
-      const updatedMenuData = await updateMenuDataWithManagements(roles);
-      setMenuData(updatedMenuData); 
-    };
-    initializeMenuData();
+    initializeManagement();
+    
+    const unsubscribe = subscribe(() => {
+      setMenuData(getUpdatedMenuData(roles));
+    });
+    
+    return unsubscribe;
   }, [roles]);
 
   const navbarToggleHandler = () => setNavbarOpen(!navbarOpen);
@@ -49,9 +53,19 @@ const Header = () => {
     window.location.href = '/api/auth/logout';
   };
 
-  const handleSubmenuSelect = (title) => {
-    setManagementGlobal({ id: 0, year: title }); 
-    window.location.reload(); 
+  const handleSubmenuSelect = (title: string) => {
+    const { allManagements } = getManagementGlobal();
+    const management = allManagements.find(m => 
+      m.management.toString() === title
+    );
+    
+    if (management) {
+      setManagementGlobal({
+        id: management.id,
+        year: management.management,
+        status: management.status
+      });
+    }
   };
 
   const filteredMenuData = menuData.filter(menuItem => {

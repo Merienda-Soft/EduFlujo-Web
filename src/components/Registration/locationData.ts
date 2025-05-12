@@ -48,14 +48,14 @@ export const locationData = {
     "CORNELIO SAAVEDRA", "CHAYANTA", "MODESTO OMISTE",
     
     // ORURO
-    "CERCADO", "POOPÓ", "PANTALEÓN DALENCE",
+    "POOPÓ", "PANTALEÓN DALENCE",
     "LADISLAO CABRERA", "SAUCARÍ", "CARANGAS",
     "SAN PEDRO DE TOTORA", "SEBASTIÁN PAGADOR",
     "MEJILLONES", "NOR CARANGAS", "SUR CARANGAS",
     "SABAYA", "CHOQUE COTA", "COPAJIRA",
     
     // TARIJA
-    "CERCADO", "JOSÉ MARÍA AVILÉS", "ARCE",
+    "JOSÉ MARÍA AVILÉS", "ARCE",
     "GRAN CHACO", "ANICETO ARCE", "BURDET O'CONNOR",
     "MENDEZ", "AVILEZ", "CERRILLOS",
     
@@ -66,7 +66,7 @@ export const locationData = {
     "SUD CINTI",
     
     // BENI
-    "CERCADO", "MOXOS", "MARBÁN", "VACA DÍEZ",
+    "MOXOS", "MARBÁN", "VACA DÍEZ",
     "YACUMA", "BALLIVIÁN", "ITENEZ",
     "MAMORÉ", "MARBÁN", "MÁXIMOS",
     "GENERAL JOSÉ BALLIVIÁN",

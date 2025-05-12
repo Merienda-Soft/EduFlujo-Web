@@ -51,12 +51,12 @@ const StartManagement = () => {
       setEndDate(`${year}-12-31`);
       
       // Set quarter dates
-      setFirstQuarterStart(`${year}-01-01`);
-      setFirstQuarterEnd(`${year}-03-31`);
-      setSecondQuarterStart(`${year}-04-01`);
-      setSecondQuarterEnd(`${year}-06-30`);
-      setThirdQuarterStart(`${year}-07-01`);
-      setThirdQuarterEnd(`${year}-09-30`);
+      setFirstQuarterStart(`${year}-02-01`);
+      setFirstQuarterEnd(`${year}-04-31`);
+      setSecondQuarterStart(`${year}-05-01`);
+      setSecondQuarterEnd(`${year}-08-30`);
+      setThirdQuarterStart(`${year}-09-01`);
+      setThirdQuarterEnd(`${year}-11-30`);
     };
 
     getCurrentYear();
@@ -181,7 +181,6 @@ const StartManagement = () => {
         dateString === secondQuarterStart || dateString === thirdQuarterStart) {
       date.setHours(0, 0, 0, 0);
     }
-    // For end dates, set to end of day (23:59:59.999)
     else {
       date.setHours(23, 59, 59, 999);
     }
@@ -227,6 +226,7 @@ const StartManagement = () => {
         title: 'Gestión creada con éxito',
         text: `La gestión para el año ${currentYear} ha sido creada exitosamente.`,
       });
+      window.location.href = '/course';
     } catch (error) {
       console.error('Error al crear la gestión:', error);
       Swal.fire({

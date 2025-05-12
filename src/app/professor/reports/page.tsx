@@ -5,7 +5,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
-import { managementGlobal } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
 import { getProfessorByEmail } from '../../../utils/tasksService';
 import Swal from 'sweetalert2';
 
@@ -26,7 +26,7 @@ export default function ReportsPage() {
         const data = await getProfessorByEmail(user.email);
         setProfessor(data.professor);
         // Filtrar por la gestión seleccionada
-        const filtered = (data.professor.assignments || []).filter(a => a.management_id === managementGlobal.id);
+        const filtered = (data.professor.assignments || []).filter(a => a.management_id === getCurrentManagementData().id);
         setAssignments(filtered);
       } catch (e) {
         setError('No se pudieron cargar los cursos.');
@@ -34,7 +34,7 @@ export default function ReportsPage() {
         setLoading(false);
       }
     };
-    if (user?.email && managementGlobal.id) loadData();
+    if (user?.email && getCurrentManagementData().id) loadData();
   }, [user]);
 
   // Agrupar assignments por curso
@@ -77,7 +77,7 @@ export default function ReportsPage() {
   // Ir al reporte de materia
   const navigateToSubjectReport = (curso: any, materia: any) => {
     router.push(
-      `/professor/reports/subject?materiaid=${materia.id}&cursoid=${curso.courseId}&teacherid=${professor?.id}&materiaName=${encodeURIComponent(materia.nombre)}&management=${encodeURIComponent(JSON.stringify(managementGlobal))}`
+      `/professor/reports/subject?materiaid=${materia.id}&cursoid=${curso.courseId}&teacherid=${professor?.id}&materiaName=${encodeURIComponent(materia.nombre)}&management=${encodeURIComponent(JSON.stringify(getCurrentManagementData))}`
     );
   };
 
@@ -95,7 +95,7 @@ export default function ReportsPage() {
 
   return (
     <div className="">
-      <Breadcrumb pageName="Reportes" description={`Gestión ${managementGlobal?.management || "Actual"}`} />
+      <Breadcrumb pageName="Reportes" description={`Gestión ${getCurrentManagementData()?.management || "Actual"}`} />
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <div className="mb-8">

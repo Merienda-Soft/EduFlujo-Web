@@ -8,7 +8,7 @@ import { deleteCourse } from '../../utils/courseService';
 import { getDegree } from '../../utils/managementService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faEdit, faEye } from '@fortawesome/free-solid-svg-icons';
-import { managementGlobal } from '../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive} from '../../utils/globalState';
 import { httpRequestFactory } from '../../utils/HttpRequestFactory';
 
 interface Degree {
@@ -55,8 +55,6 @@ const CoursesList = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const isCurrentYear = managementGlobal.year === new Date().getFullYear();
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -97,7 +95,7 @@ const CoursesList = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-        const { url, config } = httpRequestFactory.createRequest('/course'); // Cambiado a '/courses'
+        const { url, config } = httpRequestFactory.createRequest('/course'); 
         const response = await fetch(url, config);
         
         if (!response.ok) throw new Error('Error al obtener cursos');
@@ -105,7 +103,7 @@ const CoursesList = () => {
         const data = await response.json();
       
       const activeCourses = data.filter(course => 
-        course.management.management === managementGlobal.year
+        course.management.management === getCurrentManagementData().management
       );
       
       setCourses(activeCourses);
@@ -185,10 +183,10 @@ const CoursesList = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4 md:mb-0">
-          Gestión de Cursos - {managementGlobal.year}
+          Gestión de Cursos - {getCurrentManagementData().management}
         </h1>
         
-        {isCurrentYear && (
+        {isCurrentManagementActive && (
           <button
             onClick={() => setShowCourseModal(true)}
             className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-md shadow transition-colors"
@@ -251,7 +249,7 @@ const CoursesList = () => {
                 ))}
               </ul>
           
-              {isCurrentYear && (
+              {isCurrentManagementActive && (
                 <div className="flex justify-end space-x-2 mt-4">
                   <button
                     onClick={() => handleEditCourse(course)}
@@ -276,7 +274,7 @@ const CoursesList = () => {
       ) : (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center">
           <p className="text-gray-600 dark:text-gray-400">
-            No se encontraron cursos para el grado seleccionado en la gestión {managementGlobal.year}
+            No se encontraron cursos para el grado seleccionado en la gestión {getCurrentManagementData().management}
           </p>
         </div>
       )}

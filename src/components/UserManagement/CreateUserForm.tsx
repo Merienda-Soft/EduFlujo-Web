@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { createProfesor } from '../../utils/asignationService';
 import { getMaterias } from '../../utils/courseService';
+import { AutocompleteInput } from '../Registration/AutocompleteInput';
 
 const generateRandomPassword = () => {
   const letter = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -164,29 +165,65 @@ const CreateUserForm = () => {
         
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[ 
+                  {[ 
                     { label: "Nombre", name: "name" },
                     { label: "Correo", name: "email", type: "email" },
                     { label: "Apellido Paterno", name: "lastname" },
-                    { label: "País", name: "pais" },
+                    { 
+                      label: "País", 
+                      name: "pais", 
+                      type: "combobox",
+                      comboboxType: "pais" as 'pais' 
+                    },
                     { label: "Apellido Materno", name: "second_lastname" },
-                    { label: "Departamento", name: "departamento" },
+                    { 
+                      label: "Departamento", 
+                      name: "departamento", 
+                      type: "combobox",
+                      comboboxType: "departamento" as 'departamento' 
+                    },
                     { label: "CI", name: "ci" },
-                    { label: "Provincia", name: "provincia" },
+                    { 
+                      label: "Provincia", 
+                      name: "provincia", 
+                      type: "combobox",
+                      comboboxType: "provincia" as 'provincia' 
+                    },
                     { label: "Nacimiento", name: "birth_date", type: "date" },
-                    { label: "Localidad", name: "localidad" }
-                ].map(({ label, name, type = "text" }) => (
-                    <input
-                    key={name}
-                    type={type}
-                    name={name}
-                    placeholder={label}
-                    value={formData[name]}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-black text-black dark:text-white"
-                    required
-                    />
-                ))}
+                    { 
+                      label: "Localidad", 
+                      name: "localidad", 
+                      type: "combobox",
+                      comboboxType: "localidad" as 'localidad' 
+                    }
+                  ].map(({ label, name, type = "text", comboboxType }) => (
+                    type === "combobox" ? (
+                      <AutocompleteInput
+                        key={name}
+                        value={formData[name]}
+                        onChange={(value) => handleInputChange({
+                          target: {
+                            name: name,
+                            value: value
+                          }
+                        })}
+                        type={comboboxType}
+                        placeholder={label}
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-black text-black dark:text-white"
+                      />
+                    ) : (
+                      <input
+                        key={name}
+                        type={type}
+                        name={name}
+                        placeholder={label}
+                        value={formData[name]}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-black text-black dark:text-white"
+                        required
+                      />
+                    )
+                  ))}
                 </div>
         
                 <div className="flex items-center gap-6 mt-4">

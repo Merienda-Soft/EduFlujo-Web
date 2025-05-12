@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../Modal/Modal';
 import { getMaterias, updateCourse } from '../../utils/courseService';
 import Swal from 'sweetalert2';
-import { managementGlobal } from '../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../utils/globalState';
 
 interface Materia {
   id: string;
@@ -80,7 +80,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ show, onClose, course
       course: course.course,
       parallel: course.parallel.trim(),
       degree_id: course.degree_id,
-      management_id: managementGlobal.id,
+      management_id: getCurrentManagementData().id,
       subject_ids: selectedMaterias.map((m) => Number(m.id)),
     };
 

@@ -122,13 +122,15 @@ const TutorRegister = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
       
-      if (!file.type.match('image.*')) {
+      if (!allowedTypes.includes(file.type.toLowerCase())) {
         Swal.fire({
           icon: 'error',
           title: 'Formato inválido',
-          text: 'Por favor sube una imagen válida (JPEG, PNG)',
+          text: 'Solo se aceptan imágenes en formato JPG, JPEG o PNG',
         });
+        e.target.value = '';
         return;
       }
 
@@ -136,20 +138,37 @@ const TutorRegister = () => {
         Swal.fire({
           icon: 'error',
           title: 'Archivo muy grande',
-          text: 'La imagen no debe exceder los 5MB',
+          text: 'La imagen no debe exceder los 5MB. Tamaño actual: ' + 
+                `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
         });
+        e.target.value = '';
         return;
       }
 
-      if (type === 'front') {
-        setFrontImage(file);
-        setFrontPreview(URL.createObjectURL(file));
-      } else {
-        setBackImage(file);
-        setBackPreview(URL.createObjectURL(file));
-      }
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        const minWidth = 500;
+        const minHeight = 300;
+        if (img.width < minWidth || img.height < minHeight) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Resolución muy baja',
+            text: `La imagen debe tener al menos ${minWidth}x${minHeight} píxeles.`,
+          });
+          e.target.value = ''; 
+          return;
+        }
 
-      setValidationResult(null);
+        if (type === 'front') {
+          setFrontImage(file);
+          setFrontPreview(URL.createObjectURL(file));
+        } else {
+          setBackImage(file);
+          setBackPreview(URL.createObjectURL(file));
+        }
+        setValidationResult(null);
+      };
     }
   };
 
@@ -158,7 +177,7 @@ const TutorRegister = () => {
       Swal.fire({
         icon: 'error',
         title: 'Imágenes faltantes',
-        text: 'Por favor sube ambas imágenes del documento',
+        text: 'Debes subir ambas imágenes (anverso y reverso) del documento',
       });
       return;
     }
@@ -172,20 +191,64 @@ const TutorRegister = () => {
         setValidationResult(result);
         if (result.is_valid) {
           setCurrentStep('form');
+        } else {
+          const frontScore = result.data?.validation_scores?.front?.['documento de identidad'] || 0;
+          const backScore = result.data?.validation_scores?.back?.['documento de identidad'] || 0;
+          
+          let errorMessage = 'El documento no pudo ser validado. ';
+          
+          if (frontScore < 0.5 && backScore < 0.5) {
+            errorMessage += 'Ambas imágenes no parecen ser de un documento de identidad válido.';
+          } else if (frontScore < 0.5) {
+            errorMessage += 'La imagen del anverso no parece ser de un documento de identidad válido.';
+          } else if (backScore < 0.5) {
+            errorMessage += 'La imagen del reverso no parece ser de un documento de identidad válido.';
+          } else {
+            errorMessage += 'Por favor asegúrate de que las imágenes sean claras y completas.';
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: 'Documento no válido',
+            html: `
+              <div>
+                <p>${errorMessage}</p>
+                <p><strong>Consejos:</strong></p>
+                <ul>
+                  <li>Asegúrate de que el documento esté completamente visible</li>
+                  <li>Verifica que la imagen no esté borrosa</li>
+                  <li>Evita reflejos y sombras</li>
+                </ul>
+              </div>
+            `,
+          });
         }
       } else {
+        let errorMessage = result.error || 'Ocurrió un error al validar el documento';
+        
+        if (result.error?.includes('imágenes son inválidas')) {
+          errorMessage = 'Las imágenes están corruptas o no son válidas. Por favor sube nuevas imágenes.';
+        } else if (result.error?.includes('Formatos no soportados')) {
+          errorMessage = 'Formato de imagen no soportado. Solo se aceptan JPG, JPEG o PNG.';
+        }
+
         Swal.fire({
           icon: 'error',
           title: 'Error de validación',
-          text: result.error || 'Error al validar el documento',
+          html: `
+            <div>
+              <p>${errorMessage}</p>
+              ${result.details ? `<p>Detalles técnicos: ${JSON.stringify(result.details)}</p>` : ''}
+            </div>
+          `,
         });
       }
     } catch (error) {
       console.error('Error al validar documento:', error);
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: 'Ocurrió un error al validar el documento',
+        title: 'Error inesperado',
+        text: 'Las imagenes no pertenecen a un documento de identidad.',
       });
     } finally {
       setIsValidating(false);

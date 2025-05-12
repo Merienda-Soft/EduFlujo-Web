@@ -5,7 +5,7 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
-import { managementGlobal } from '../../../utils/globalState';
+import { getCurrentManagementData, isCurrentManagementActive } from '../../../utils/globalState';
 import { getProfessorByEmail } from '../../../utils/tasksService';
 import {
   uploadSupportMaterial,
@@ -103,7 +103,7 @@ export default function SupportMaterialPage() {
 
   const subjectId = searchParams?.get('subjectId');
   const courseId = searchParams?.get('courseId');
-  const managementId = managementGlobal?.id;
+  const managementId = getCurrentManagementData()?.id;
 
   // Cargar datos del profesor
   useEffect(() => {

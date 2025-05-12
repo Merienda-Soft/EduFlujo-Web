@@ -2,18 +2,38 @@
 import Cookies from 'js-cookie';
 import { getYearManagements } from '../utils/managementService';
 
-interface ManagementGlobal {
+interface Management {
   id: number;
-  year: number; 
+  management: number;
   status: number;
-  [key: string]: any;
 }
 
-export let managementGlobal: ManagementGlobal = {
+interface ManagementGlobal {
+  id: number;
+  year: number;
+  status: number;
+  allManagements: Management[];
+  currentManagement?: Management; 
+}
+
+let managementGlobal: ManagementGlobal = {
   id: 0,
   year: 0,
-  status: 0
+  status: 0,
+  allManagements: []
 };
+
+const listeners: Array<() => void> = [];
+
+export const subscribe = (listener: () => void) => {
+  listeners.push(listener);
+  return () => {
+    const index = listeners.indexOf(listener);
+    if (index > -1) listeners.splice(index, 1);
+  };
+};
+
+const notify = () => listeners.forEach(listener => listener());
 
 export const setManagementGlobal = (data: Partial<ManagementGlobal>) => {
   managementGlobal = { ...managementGlobal, ...data };
@@ -22,87 +42,47 @@ export const setManagementGlobal = (data: Partial<ManagementGlobal>) => {
     sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production'
   });
+  notify();
 };
 
-const getActiveManagement = async (): Promise<ManagementGlobal> => {
+export const getManagementGlobal = () => managementGlobal;
+
+export const initializeManagement = async () => {
   try {
     const managements = await getYearManagements();
+    const stored = Cookies.get('managementGlobal');
     
-    if (!managements || managements.length === 0) {
-      return {
-        id: 0,
-        year: 0,
-        status: 0
-      };
-    }
-
-
-    const activeManagement = managements.find((m: any) => m.status === 1);
-    console.log('Gestión activa:', activeManagement);
+    let selectedManagement = managements[0];
     
-    if (activeManagement) {
-      return {
-        id: activeManagement.id,
-        year: activeManagement.management,
-        status: activeManagement.status
-      };
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const storedManagement = managements.find(m => m.id === parsed.id);
+      if (storedManagement) selectedManagement = storedManagement;
     }
     
-    const latestManagement = managements.reduce((prev, current) => 
-      (prev.id > current.id) ? prev : current
-    );
+    const activeManagement = managements.find(m => m.status === 1);
+    if (activeManagement) selectedManagement = activeManagement;
     
-    return {
-      id: latestManagement.id,
-      year: latestManagement.management.toString(),
-      status: latestManagement.status
-    };
-    
+    setManagementGlobal({
+      id: selectedManagement.id,
+      year: selectedManagement.management,
+      status: selectedManagement.status,
+      allManagements: managements,
+      currentManagement: selectedManagement // Añadido
+    });
   } catch (error) {
-    console.error('Error al obtener gestión activa:', error);
-    return {
-      id: 0,
-      year: 0,
-      status: 0
-    };
+    console.error('Error inicializando gestión:', error);
   }
 };
 
-const initializeManagement = async () => {
-  const stored = Cookies.get('managementGlobal');
-  
-  const currentManagements = await getYearManagements();
-  const storedManagement = stored ? JSON.parse(stored) : null;
-  
-  if (storedManagement && storedManagement.id) {
-    const isValid = currentManagements.some(m => m.id === storedManagement.id);
-    if (isValid) {
-      managementGlobal = storedManagement;
-      return;
-    }
-  }
-
-  managementGlobal = await getActiveManagement();
-  Cookies.set('managementGlobal', JSON.stringify(managementGlobal));
+export const getCurrentManagementData = () => {
+  return managementGlobal.currentManagement || {
+    id: 0,
+    management: 0,
+    status: 0
+  };
 };
 
-
-if (typeof window !== 'undefined') {
-  initializeManagement();
-}
-
-export const getCurrentManagementId = (): number => {
-  return managementGlobal?.id ?? 0;
-};
-
-export const refreshManagementGlobal = async () => {
-  managementGlobal = await getActiveManagement();
-  Cookies.set('managementGlobal', JSON.stringify(managementGlobal));
-  return managementGlobal;
-};
-
-
-export const findManagementByYear = async (year: string) => {
-  const managements = await getYearManagements();
-  return managements.find(m => m.management.toString() === year);
+export const isCurrentManagementActive = () => {
+  return managementGlobal.status === 1;
 };
