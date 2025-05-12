@@ -5,6 +5,8 @@ import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { getTaskByIdWithAssignmentsForStudent, submitTaskFiles, cancelSubmitTaskFiles } from "../../../../../utils/tasksService";
 import { CalendarIcon, ClockIcon, AcademicCapIcon, DocumentIcon, XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import Swal from "sweetalert2";
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../../../utils/firebase/firebaseConfig';
 
 export default function TaskDetailPage() {
   const searchParams = useSearchParams();
@@ -60,17 +62,19 @@ export default function TaskDetailPage() {
       setIsUploading(true);
       setUploadProgress(0);
 
-      // Aquí iría la lógica para subir los archivos a Firebase Storage
-      // Por ahora simulamos el progreso
       const totalFiles = selectedFiles.length;
       const uploadedFiles = [];
 
       for (let i = 0; i < selectedFiles.length; i++) {
-        // Simular subida de archivo
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const file = selectedFiles[i];
+        // 1. Subir a Firebase Storage
+        const storageRef = ref(storage, `student-tasks/${studentId}/${taskId}/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        // 2. Obtener la URL pública de descarga
+        const url = await getDownloadURL(storageRef);
         uploadedFiles.push({
-          name: selectedFiles[i].name,
-          url: "https://example.com/file" + i // URL simulada
+          name: file.name,
+          url
         });
         setUploadProgress(((i + 1) / totalFiles) * 100);
       }

@@ -14,6 +14,8 @@ import {
   SupportMaterial,
 } from '../../../utils/supportMaterialService';
 import Swal from 'sweetalert2';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../utils/firebase/firebaseConfig';
 
 const getFileIcon = (fileName: string) => {
   if (!fileName) return "📄";
@@ -171,9 +173,12 @@ export default function SupportMaterialPage() {
     try {
       for (let i = 0; i < e.target.files.length; i++) {
         const file = e.target.files[i];
-        // Subir a algún storage externo aquí si es necesario (ejemplo: Firebase, S3, etc.)
-        // Por ahora asumimos que ya tenemos la URL (mock):
-        const url = URL.createObjectURL(file); // Reemplazar por la URL real tras subir
+        // 1. Subir a Firebase Storage
+        const storageRef = ref(storage, `support-material/${courseId}/${subjectId}/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        // 2. Obtener la URL pública de descarga
+        const url = await getDownloadURL(storageRef);
+        // 3. Guardar la URL real en tu backend
         const fileData = { name: file.name, url };
         const response = await uploadSupportMaterial(
           Number(courseId),
