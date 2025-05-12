@@ -72,6 +72,7 @@ export default function GradeTaskPage() {
         qualification: s.calificacion,
         comment: s.comentario || ''
       }));
+      console.log('Enviando a backend:', studentsData);
       const response = await updateTaskGrades(params.taskId, studentsData);
       if (!response.ok) throw new Error('Error al guardar');
       setChangeCount(0);
@@ -100,7 +101,10 @@ export default function GradeTaskPage() {
     setShowReviewModal(true);
     setReviewLoading(true);
     try {
-      const data = await getTaskByIdWithAssignmentsForStudent(params.taskId, studentId);
+      const taskId = Array.isArray(params.taskId) ? params.taskId[0] : params.taskId;
+      const studentIdStr = Array.isArray(studentId) ? studentId[0] : studentId;
+      const data = await getTaskByIdWithAssignmentsForStudent(taskId, studentIdStr);
+      console.log('DATA DE BACKEND (reviewData):', data.data);
       setReviewData(data.data);
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la entrega del estudiante.' });
@@ -121,6 +125,7 @@ export default function GradeTaskPage() {
         qualification: assignment.qualification,
         comment: assignment.comment || ''
       }];
+      console.log('Enviando a backend:', studentsData);
       const response = await updateTaskGrades(params.taskId, studentsData);
       if (!response.ok) throw new Error('Error al guardar');
       Swal.fire({ icon: 'success', title: 'Éxito', text: 'Calificación actualizada correctamente', timer: 1800, showConfirmButton: false });
@@ -195,11 +200,25 @@ export default function GradeTaskPage() {
                       <span className="font-semibold text-gray-900 dark:text-white truncate max-w-[300px]">{student.nombre}</span>
                     </div>
                     <input
-                      type="text"
+                      type="number"
                       className="w-20 px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
                       placeholder="Nota"
                       value={student.calificacion}
-                      onChange={e => handleGradeChange(idx, e.target.value)}
+                      min={0}
+                      max={100}
+                      onChange={e => {
+                        let value = e.target.value;
+                        // Permitir vacío para borrar
+                        if (value === "") {
+                          handleGradeChange(idx, "");
+                          return;
+                        }
+                        // Solo permitir números entre 0 y 100
+                        const num = Number(value);
+                        if (!isNaN(num) && num >= 0 && num <= 100) {
+                          handleGradeChange(idx, value);
+                        }
+                      }}
                       maxLength={5}
                     />
                     <input
@@ -207,8 +226,12 @@ export default function GradeTaskPage() {
                       className="flex-1 px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                       placeholder="Comentario"
                       value={student.comentario || ''}
-                      onChange={e => handleCommentChange(idx, e.target.value)}
-                      maxLength={200}
+                      onChange={e => {
+                        if (e.target.value.length <= 300) {
+                          handleCommentChange(idx, e.target.value);
+                        }
+                      }}
+                      maxLength={300}
                     />
                   </div>
                 </div>
@@ -268,12 +291,49 @@ export default function GradeTaskPage() {
                 <div className="mb-4">
                   <label className="block font-semibold mb-1">Nota</label>
                   <input
-                    type="text"
+                    type="number"
                     className="w-32 px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
                     placeholder="Nota"
-                    value={reviewData.assignments[0].qualification || ''}
-                    onChange={e => setReviewData(prev => ({ ...prev, assignments: [{ ...prev.assignments[0], qualification: e.target.value }] }))}
-                    maxLength={5}
+                    value={
+                      reviewData.assignments[0].qualification && reviewData.assignments[0].qualification.trim() !== ""
+                        ? Number(reviewData.assignments[0].qualification.trim())
+                        : ""
+                    }
+                    min={0}
+                    max={100}
+                    onKeyDown={e => {
+                      // Permitir: backspace, tab, flechas, delete, home, end
+                      if (
+                        !(
+                          (e.key >= '0' && e.key <= '9') ||
+                          ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End'].includes(e.key)
+                        )
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onInput={e => {
+                      const input = e.target as HTMLInputElement;
+                      let value = input.value;
+                      // Permitir vacío
+                      if (value === "") {
+                        setReviewData(prev => ({
+                          ...prev,
+                          assignments: [{ ...prev.assignments[0], qualification: "" }]
+                        }));
+                        return;
+                      }
+                      // Limitar a 3 dígitos y a 100
+                      let num = Number(value);
+                      if (num > 100) num = 100;
+                      if (num < 0) num = 0;
+                      setReviewData(prev => ({
+                        ...prev,
+                        assignments: [{ ...prev.assignments[0], qualification: String(num) }]
+                      }));
+                      input.value = String(num);
+                    }}
+                    maxLength={3}
                   />
                 </div>
                 <div className="mb-4">
@@ -282,8 +342,12 @@ export default function GradeTaskPage() {
                     className="w-full px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                     placeholder="Comentario"
                     value={reviewData.assignments[0].comment || ''}
-                    onChange={e => setReviewData(prev => ({ ...prev, assignments: [{ ...prev.assignments[0], comment: e.target.value }] }))}
-                    maxLength={200}
+                    onChange={e => {
+                      if (e.target.value.length <= 300) {
+                        setReviewData(prev => ({ ...prev, assignments: [{ ...prev.assignments[0], comment: e.target.value }] }));
+                      }
+                    }}
+                    maxLength={300}
                   />
                 </div>
                 <div className="flex justify-end">

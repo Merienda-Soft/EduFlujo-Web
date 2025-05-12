@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { getSupportMaterials } from "../../../utils/supportMaterialService";
 import { DocumentIcon, PhotoIcon, VideoCameraIcon, DocumentTextIcon, TableCellsIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 import Swal from "sweetalert2";
+import { resolve } from "path";
 
 const FILE_CATEGORIES = [
   {
@@ -72,6 +73,7 @@ export default function SupportMaterialPage() {
         Number(subjectId),
         Number(managementId)
       );
+      console.log(response)
       if (response.ok && response.data) {
         setMaterials(response.data.sort((a: any, b: any) => 
           new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
@@ -183,6 +185,18 @@ export default function SupportMaterialPage() {
                           rel="noopener noreferrer"
                           className="flex-1 font-medium text-blue-600 dark:text-blue-400 truncate hover:underline"
                           title={mat.file.name}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (mat.file.url.startsWith('blob:')) {
+                              Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se puede acceder a este archivo directamente. Por favor, contacta al profesor.'
+                              });
+                            } else {
+                              window.open(mat.file.url, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
                         >
                           {mat.file.name}
                         </a>
