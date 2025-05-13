@@ -6,6 +6,7 @@ import { getSupportMaterials } from "../../../utils/supportMaterialService";
 import { DocumentIcon, PhotoIcon, VideoCameraIcon, DocumentTextIcon, TableCellsIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 import Swal from "sweetalert2";
 import { resolve } from "path";
+import { getCurrentManagementData, getManagementGlobal, subscribe } from "../../../utils/globalState";
 
 const FILE_CATEGORIES = [
   {
@@ -60,18 +61,29 @@ export default function SupportMaterialPage() {
 
   const subjectId = searchParams.get("subjectId");
   const courseId = searchParams.get("courseId");
-  const managementId = searchParams.get("managementId");
+  const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
   const materiaName = searchParams.get("materiaName");
+
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Cargar materiales
   const fetchMaterials = async () => {
-    if (!courseId || !subjectId || !managementId) return;
+    if (!courseId || !subjectId || !selectedManagement) return;
     setLoading(true);
     try {
       const response = await getSupportMaterials(
         Number(courseId),
         Number(subjectId),
-        Number(managementId)
+        Number(selectedManagement)
       );
       console.log(response)
       if (response.ok && response.data) {
@@ -93,8 +105,10 @@ export default function SupportMaterialPage() {
   };
 
   useEffect(() => {
-    fetchMaterials();
-  }, [courseId, subjectId, managementId]);
+    if (selectedManagement) {
+      fetchMaterials();
+    }
+  }, [courseId, subjectId, selectedManagement]);
 
   // Filtrar materiales por categoría
   const materialsByCategory = FILE_CATEGORIES.map(cat => ({
@@ -139,7 +153,7 @@ export default function SupportMaterialPage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Material de Apoyo</h1>
               <div className="mt-2 flex items-center gap-4">
                 <span className="text-sm text-gray-500 dark:text-gray-400">{materiaName}</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">Gestión {managementId}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Gestión {selectedManagement}</span>
               </div>
             </div>
             <button

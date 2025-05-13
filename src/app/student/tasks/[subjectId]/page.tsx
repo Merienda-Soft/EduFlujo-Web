@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { getTasksByStudentId } from "../../../../utils/tasksService";
-import { getCurrentManagementData } from "../../../../utils/globalState";
+import { getCurrentManagementData, getManagementGlobal, subscribe } from "../../../../utils/globalState";
 import Swal from "sweetalert2";
 
 const STATUS_FILTERS = {
@@ -27,8 +27,19 @@ export default function StudentTasksPage() {
   const studentId = searchParams.get("studentId");
   const courseId = searchParams.get("courseId");
   const subjectId = params.subjectId;
-  const managementId = getCurrentManagementData()?.id;
+  const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
   const materiaName = searchParams.get("materiaName");
+
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const [searchValue, setSearchValue] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -48,8 +59,8 @@ export default function StudentTasksPage() {
   );
 
   const fetchTasks = useCallback(async () => {
-    if (!studentId || !courseId || !subjectId || !managementId) {
-      console.error("Missing required IDs:", { studentId, courseId, subjectId, managementId });
+    if (!studentId || !courseId || !subjectId || !selectedManagement) {
+      console.error("Missing required IDs:", { studentId, courseId, subjectId, selectedManagement });
       return;
     }
     
@@ -59,7 +70,7 @@ export default function StudentTasksPage() {
         studentId,
         courseId,
         subjectId.toString(),
-        managementId.toString()
+        selectedManagement.toString()
       );
 
       if (response.ok && response.data) {
@@ -79,11 +90,13 @@ export default function StudentTasksPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [studentId, courseId, subjectId, managementId]);
+  }, [studentId, courseId, subjectId, selectedManagement]);
 
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    if (selectedManagement) {
+      fetchTasks();
+    }
+  }, [fetchTasks, selectedManagement]);
 
   const handlePrevMonth = useCallback(() => {
     setCurrentDate((prev) => {
@@ -128,12 +141,12 @@ export default function StudentTasksPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tareas</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Gestión {managementId}
+              Gestión {selectedManagement}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => router.push(`/student/support-material?subjectId=${subjectId}&courseId=${courseId}&studentId=${studentId}&managementId=${managementId}`)}
+              onClick={() => router.push(`/student/support-material?subjectId=${subjectId}&courseId=${courseId}&studentId=${studentId}&managementId=${selectedManagement}`)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
             >
               <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,7 +268,7 @@ export default function StudentTasksPage() {
                     <button
                       className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold transition"
                       title="Ver detalles de la tarea"
-                      onClick={() => router.push(`/student/tasks/${subjectId}/${task.id}?courseId=${courseId}&studentId=${studentId}&managementId=${managementId}`)}
+                      onClick={() => router.push(`/student/tasks/${subjectId}/${task.id}?courseId=${courseId}&studentId=${studentId}&managementId=${selectedManagement}`)}
                     >
                       Ver Detalles =&gt;
                     </button>

@@ -5,7 +5,7 @@ import { useUser } from "@auth0/nextjs-auth0/client";
 import { useUserRoles } from "../../utils/roleUtils";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "../../components/Common/Breadcrumb";
-import { getCurrentManagementData, isCurrentManagementActive } from "../../utils/globalState";
+import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from "../../utils/globalState";
 import { getStudents } from "../../utils/studentsService";
 import { getTutorByEmail, getStudentByEmail } from "../../utils/tutorshipService";
 import Swal from "sweetalert2";
@@ -22,8 +22,19 @@ export default function StudentHomePage() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [activeManagement, setActiveManagement] = useState<any>(getCurrentManagementData());
   const [managements, setManagements] = useState([]);
-  const [selectedManagement, setSelectedManagement] = useState(null);
+  const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
   const [tutorStatus, setTutorStatus] = useState<number | null>(null);
+
+  // Suscribirse a cambios en la gestión
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      const { id } = getManagementGlobal();
+      if (id) {
+        setSelectedManagement(id);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,7 +45,7 @@ export default function StudentHomePage() {
           const tutorResponse = await getTutorByEmail(user.email);
           if (tutorResponse) {
             const tutorId = tutorResponse.id;
-            const studentsResponse = await getStudents(tutorId, "tutor", selectedManagement || getCurrentManagementData().id);
+            const studentsResponse = await getStudents(tutorId, "tutor", selectedManagement);
             if (studentsResponse.ok && studentsResponse.data) {
               setTutorStatus(studentsResponse.data.tutor.status);
               setStudentData(studentsResponse.data.students);
@@ -48,7 +59,7 @@ export default function StudentHomePage() {
           console.log('auth:', studentResponse);
           if (studentResponse) {
             const studentId = studentResponse.id;
-            const studentsResponse = await getStudents(studentId, "student", selectedManagement || getCurrentManagementData().id);
+            const studentsResponse = await getStudents(studentId, "student", selectedManagement);
             console.log('Respuesta de estudiante:', studentResponse);
             if (studentsResponse.ok && studentsResponse.data) {
               setStudentData(studentsResponse.data);
@@ -67,7 +78,7 @@ export default function StudentHomePage() {
         setLoading(false);
       }
     };
-    if (user?.email && !isLoading) fetchData();
+    if (user?.email && !isLoading && selectedManagement) fetchData();
   }, [user, isLoading, selectedManagement]);
 
   // Inicializar gestión activa desde cookie o globalState
@@ -98,17 +109,6 @@ export default function StudentHomePage() {
     };
     fetchManagements();
   }, []);
-
-  // Manejar cambio de gestión
-  const handleManagementChange = (e) => {
-    const id = Number(e.target.value);
-    const selected = managements.find((m) => m.id === id);
-    if (selected) {
-      setManagementGlobal({ id: selected.id, year: selected.management });
-      setSelectedManagement(selected.id);
-      window.location.reload();
-    }
-  };
 
   // Opciones para el combo de estudiantes (tutor)
   const studentOptions = useMemo(() => {
@@ -207,27 +207,6 @@ export default function StudentHomePage() {
       <Breadcrumb pageName="Cursos" description={`Gestión ${activeManagement?.management || "Actual"}`} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div>
-            <span className="font-semibold">Gestión activa:</span>{' '}
-            <span className="text-primary font-bold">
-              {managements.find(m => m.id === selectedManagement)?.management || '---'}
-            </span>
-          </div>
-          <div className="mt-4 md:mt-0">
-            <label className="mr-2 font-medium">Cambiar gestión:</label>
-            <select
-              className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-              value={selectedManagement || ''}
-              onChange={handleManagementChange}
-            >
-              <option value="" disabled>Selecciona una gestión</option>
-              {managements.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.management} {m.status === 1 ? '(Activa)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
           {hasRole(["tutor"]) && studentOptions.length > 0 && (
             <div className="flex items-center gap-2">
               <label htmlFor="student-select" className="text-sm font-medium text-gray-700 dark:text-gray-200">Estudiante:</label>
