@@ -60,6 +60,7 @@ export default function TasksPage() {
     { value: '2', text: 'Saber' },
     { value: '3', text: 'Hacer' },
     { value: '4', text: 'Decidir' },
+    { value: '5', text: 'Autoevaluación' },
   ];
 
   // Extract courseId from query string robustly
