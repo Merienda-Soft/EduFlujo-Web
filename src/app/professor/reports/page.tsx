@@ -6,7 +6,7 @@ import { useUserRoles } from '../../../utils/roleUtils';
 import { useRouter } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
 import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from '../../../utils/globalState';
-import { getProfessorByEmail } from '../../../utils/tasksService';
+import { getProfessorByEmail, getTasksReportByCourse } from '../../../utils/tasksService';
 import Swal from 'sweetalert2';
 
 export default function ReportsPage() {
@@ -70,19 +70,59 @@ export default function ReportsPage() {
 
   // Descargar informe trimestral
   const handleCourseReport = async (curso: any) => {
+    if (!professor?.id || !selectedManagement) {
+      Swal.fire("Error", "No se pudo obtener la información necesaria para generar el reporte", "error");
+      return;
+    }
+
+    const { value: quarter } = await Swal.fire({
+      title: 'Seleccionar Trimestre',
+      input: 'select',
+      inputOptions: {
+        '1': 'Primer Trimestre',
+        '2': 'Segundo Trimestre',
+        '3': 'Tercer Trimestre'
+      },
+      inputPlaceholder: 'Selecciona un trimestre',
+      showCancelButton: true,
+      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Descargar',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Debes seleccionar un trimestre';
+        }
+      }
+    });
+
+    if (!quarter) return; // Si el usuario cancela
+
     Swal.fire({
       title: "Generando reporte...",
+      text: `Preparando reporte del ${quarter}° trimestre`,
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
     });
+
     try {
-      // Aquí deberías llamar a tu API para descargar el reporte
-      await new Promise((res) => setTimeout(res, 1200));
+      await getTasksReportByCourse(
+        curso.courseId.toString(),
+        professor.id.toString(),
+        selectedManagement.toString(),
+        quarter
+      );
+
       Swal.close();
-      Swal.fire("Éxito", `El reporte del curso ${curso.course} ${curso.parallel} ha sido descargado`, "success");
+      Swal.fire({
+        icon: "success",
+        title: "Reporte Descargado",
+        text: `El reporte del ${quarter}° trimestre para el curso ${curso.course} ${curso.parallel} se está descargando`,
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (error) {
+      console.error('Error al generar el reporte:', error);
       Swal.close();
-      Swal.fire("Error", "No se pudo descargar el reporte", "error");
+      Swal.fire("Error", "No se pudo generar el reporte. Por favor, intente nuevamente.", "error");
     }
   };
 

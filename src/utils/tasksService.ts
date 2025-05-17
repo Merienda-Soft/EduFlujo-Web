@@ -179,3 +179,54 @@ export const cancelSubmitTaskFiles = async (taskId: string, studentId: string) =
         throw error;
     }
 };
+
+export const getTasksReportByCourse = async (courseId: string, professorId: string, managementId: string, quarter?: string) => {
+    try {
+        const { url, config } = httpRequestFactory.createRequest(
+            `/tasks/course/${courseId}/professor/${professorId}/management/${managementId}?download=true${quarter ? `&quarter=${quarter}` : ''}`
+        );
+        
+        // Modificar el config para aceptar blob
+        config.headers = {
+            ...config.headers,
+            'Accept': 'application/octet-stream'
+        };
+
+        const response = await fetch(url, config);
+        
+        if (!response.ok) {
+            throw new Error(`Error al obtener el reporte: ${response.status}`);
+        }
+
+        // Obtener el blob de la respuesta
+        const blob = await response.blob();
+        
+        // Crear URL del blob
+        const downloadUrl = window.URL.createObjectURL(blob);
+        
+        // Crear un elemento <a> temporal para la descarga
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        
+        // Obtener el nombre del archivo del header Content-Disposition si existe
+        const contentDisposition = response.headers.get('Content-Disposition');
+        const fileName = contentDisposition
+            ? contentDisposition.split('filename=')[1]?.replace(/["']/g, '')
+            : `reporte_trimestre_${quarter || '1'}.xlsx`;
+            
+        link.setAttribute('download', fileName);
+        
+        // Agregar el link al documento, hacer click y removerlo
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Limpiar la URL del blob
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        return { success: true };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
