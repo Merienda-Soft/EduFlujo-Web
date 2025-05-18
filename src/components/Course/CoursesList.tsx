@@ -95,15 +95,18 @@ const CoursesList = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-        const { url, config } = httpRequestFactory.createRequest('/course'); 
-        const response = await fetch(url, config);
-        
-        if (!response.ok) throw new Error('Error al obtener cursos');
-        
-        const data = await response.json();
+      const currentManagement = getCurrentManagementData();
       
+      const { url, config } = httpRequestFactory.createRequest('/course'); 
+      const response = await fetch(url, config);
+      
+      if (!response.ok) throw new Error('Error al obtener cursos');
+      
+      const data = await response.json();
+    
+      // Filtrar por la gestión actual
       const activeCourses = data.filter(course => 
-        course.management.management === getCurrentManagementData().management
+        course.management.management === currentManagement.management
       );
       
       setCourses(activeCourses);
@@ -112,8 +115,22 @@ const CoursesList = () => {
       console.error('Error al obtener cursos:', err);
       setError('Error al cargar los cursos');
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handleManagementChange = () => {
+      fetchCourses(); 
+    };
+
+    window.addEventListener('management-changed', handleManagementChange);
+    
+    return () => {
+      window.removeEventListener('management-changed', handleManagementChange);
+    };
+  }, []);
 
   const handleDegreeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDegreeId(Number(e.target.value));
@@ -186,7 +203,7 @@ const CoursesList = () => {
           Gestión de Cursos - {getCurrentManagementData().management}
         </h1>
         
-        {isCurrentManagementActive && (
+        {isCurrentManagementActive() && (
           <button
             onClick={() => setShowCourseModal(true)}
             className="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-md shadow transition-colors"
@@ -259,7 +276,7 @@ const CoursesList = () => {
                 ))}
               </ul>
           
-              {isCurrentManagementActive && (
+              {isCurrentManagementActive() && (
                 <div className="flex justify-end space-x-2 mt-4">
                   <button
                     onClick={() => handleEditCourse(course)}

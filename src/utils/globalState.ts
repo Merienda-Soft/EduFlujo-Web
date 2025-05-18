@@ -36,7 +36,18 @@ export const subscribe = (listener: () => void) => {
 const notify = () => listeners.forEach(listener => listener());
 
 export const setManagementGlobal = (data: Partial<ManagementGlobal>) => {
-  managementGlobal = { ...managementGlobal, ...data };
+  managementGlobal = { 
+    ...managementGlobal, 
+    ...data,
+    currentManagement: data.currentManagement || 
+      managementGlobal.allManagements.find(m => m.id === data.id) || 
+      managementGlobal.currentManagement
+  };
+  
+  if (managementGlobal.currentManagement) {
+    managementGlobal.status = managementGlobal.currentManagement.status;
+  }
+  
   Cookies.set('managementGlobal', JSON.stringify(managementGlobal), {
     expires: 1,
     sameSite: 'strict',
@@ -68,10 +79,21 @@ export const initializeManagement = async () => {
       year: selectedManagement.management,
       status: selectedManagement.status,
       allManagements: managements,
-      currentManagement: selectedManagement // Añadido
+      currentManagement: selectedManagement
     });
   } catch (error) {
     console.error('Error inicializando gestión:', error);
+    setManagementGlobal({
+      id: 0,
+      year: 0,
+      status: 0,
+      allManagements: [],
+      currentManagement: {
+        id: 0,
+        management: 0,
+        status: 0
+      }
+    });
   }
 };
 
@@ -84,5 +106,5 @@ export const getCurrentManagementData = () => {
 };
 
 export const isCurrentManagementActive = () => {
-  return managementGlobal.status === 1;
+  return managementGlobal.currentManagement?.status === 1;
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { locationData } from './locationData';
+import Swal from 'sweetalert2';
 
 interface AutocompleteInputProps {
   value: string;
@@ -9,6 +10,7 @@ interface AutocompleteInputProps {
   className?: string;
   suggestionsPosition?: 'top' | 'bottom';
   placeholder?: string;
+  allowAddNew?: boolean;
 }
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
@@ -18,7 +20,8 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   disabled,
   className = 'w-full min-w-[250px] px-3 py-2 border rounded-md',
   suggestionsPosition = 'top',
-  placeholder = ''
+  placeholder = '',
+  allowAddNew = true 
 }) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -26,6 +29,8 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const formatValue = (val: string) => val.toUpperCase().trim();
 
   // Update internal state when external value changes
   useEffect(() => {
@@ -35,14 +40,15 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   // Generate suggestions when input changes
   useEffect(() => {
     if (inputValue.length > 1 && isTyping) {
-      const matches = locationData.getAutocompleteSuggestions(inputValue, type);
+      const formattedValue = formatValue(inputValue);
+      const matches = locationData.getAutocompleteSuggestions(formattedValue, type);
       setSuggestions(matches);
-      setShowSuggestions(matches.length > 0);
+      setShowSuggestions(matches.length > 0 || allowAddNew);
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
     }
-  }, [inputValue, type, isTyping]);
+  }, [inputValue, type, isTyping, allowAddNew]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -54,22 +60,57 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   };
 
   const handleSelect = (suggestion: string) => {
-    setInputValue(suggestion);
-    onChange(suggestion);
+    const formattedValue = formatValue(suggestion);
+    setInputValue(formattedValue);
+    onChange(formattedValue);
     setShowSuggestions(false);
     setIsTyping(false);
   };
 
+  const handleAddNew = async () => {
+    const formattedValue = formatValue(inputValue);
+    
+    const result = await Swal.fire({
+      title: `¿Agregar nuevo ${type}?`,
+      text: `¿Estás seguro de agregar "${formattedValue}" a la lista de ${type}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, agregar',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (result.isConfirmed) {
+      // Agregar el nuevo valor al tipo correspondiente
+      if (!locationData[type].includes(formattedValue)) {
+        locationData[type] = [...locationData[type], formattedValue];
+      }
+      
+      handleSelect(formattedValue);
+      
+      Swal.fire({
+        title: '¡Agregado!',
+        text: `"${formattedValue}" ha sido agregado a ${type}.`,
+        icon: 'success',
+      });
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && suggestions.length > 0) {
-      handleSelect(suggestions[0]);
+    if (e.key === 'Enter') {
+      if (suggestions.length > 0) {
+        handleSelect(suggestions[0]);
+      } else if (allowAddNew && inputValue.trim().length > 0) {
+        handleAddNew();
+      }
     }
   };
 
   const handleBlur = () => {
     setTimeout(() => {
-      if (suggestions.includes(inputValue)) {
-        onChange(inputValue);
+      const formattedValue = formatValue(inputValue);
+      
+      if (suggestions.includes(formattedValue)) {
+        onChange(formattedValue);
       } else if (inputValue !== value) {
         // Reset to original value if not selected from suggestions
         setInputValue(value);
@@ -81,9 +122,10 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
   const handleFocus = () => {
     if (inputValue.length > 1) {
-      const matches = locationData.getAutocompleteSuggestions(inputValue, type);
+      const formattedValue = formatValue(inputValue);
+      const matches = locationData.getAutocompleteSuggestions(formattedValue, type);
       setSuggestions(matches);
-      setShowSuggestions(matches.length > 0);
+      setShowSuggestions(matches.length > 0 || allowAddNew);
     }
   };
 
@@ -118,7 +160,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         placeholder={placeholder}
         className={`${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
-      {showSuggestions && suggestions.length > 0 && (
+      {showSuggestions && (
         <ul 
           className={`absolute z-50 min-w-[250px] ${suggestionPositionClasses} bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600 max-h-60 overflow-auto`}
         >
@@ -132,6 +174,17 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
               {suggestion}
             </li>
           ))}
+          
+          {allowAddNew && inputValue.trim().length > 0 && suggestions.length === 0 && (
+            <li
+              className="px-4 py-2 hover:bg-gray-100 cursor-pointer dark:hover:bg-gray-600 flex items-center text-blue-500"
+              onClick={handleAddNew}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <span className="mr-2">+</span>
+              <span>Agregar "{formatValue(inputValue)}"</span>
+            </li>
+          )}
         </ul>
       )}
     </div>

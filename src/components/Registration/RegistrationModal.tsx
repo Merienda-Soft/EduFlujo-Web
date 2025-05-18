@@ -5,7 +5,7 @@ import { uploadPdf, getInscriptionsByCourseId, createInscripcion, updateInscripc
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { getCurrentManagementData, isCurrentManagementActive } from '../../utils/globalState';
-import { AutocompleteInput } from './AutocompleteInput';
+import { AutocompleteInput } from '../AutoComplete/AutocompleteInput';
 
 interface RegistrationModalProps {
   show: boolean;
@@ -298,7 +298,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   return (
     <Modal show={show} onClose={onClose} title="Inscripción de Estudiantes">
       <div className="flex flex-col space-y-4 dark:text-white">
-        {isCurrentManagementActive && (
+        {isCurrentManagementActive() && (
           <div className="flex justify-between items-center">
             <div className="flex space-x-2">
               <input
@@ -332,7 +332,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
           </div>
         )}
 
-        {!isCurrentManagementActive && (
+        {!isCurrentManagementActive() && (
           <div className="text-center py-4 text-white-500 dark:text-white-400">
             <p>Estudiantes Registrados en la gestion: {getCurrentManagementData().management}.</p>
           </div>

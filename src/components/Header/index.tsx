@@ -32,14 +32,17 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
-    initializeManagement();
-    
-    const unsubscribe = subscribe(() => {
-      setMenuData(getUpdatedMenuData(roles));
-    });
-    
-    return unsubscribe;
-  }, [roles]);
+  const init = async () => {
+    await initializeManagement();
+  };
+  init();
+
+  const unsubscribe = subscribe(() => {
+    setMenuData(getUpdatedMenuData(roles));
+  });
+  
+  return unsubscribe;
+}, [roles]);
 
   const navbarToggleHandler = () => setNavbarOpen(!navbarOpen);
   
@@ -54,19 +57,24 @@ const Header = () => {
   };
 
   const handleSubmenuSelect = (title: string) => {
-    const { allManagements } = getManagementGlobal();
-    const management = allManagements.find(m => 
-      m.management.toString() === title
-    );
+  const { allManagements } = getManagementGlobal();
+  const management = allManagements.find(m => 
+    m.management.toString() === title
+  );
+  
+  if (management) {
+    setManagementGlobal({
+      id: management.id,
+      year: management.management,
+      status: management.status,
+      currentManagement: management
+    });
     
-    if (management) {
-      setManagementGlobal({
-        id: management.id,
-        year: management.management,
-        status: management.status
-      });
-    }
-  };
+    window.dispatchEvent(new CustomEvent('management-changed', {
+      detail: { managementId: management.id }
+    }));
+  }
+};
 
   const filteredMenuData = menuData.filter(menuItem => {
     if (!menuItem.roles) return true;

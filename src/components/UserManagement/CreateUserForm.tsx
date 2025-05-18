@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { createProfesor } from '../../utils/asignationService';
 import { getMaterias } from '../../utils/courseService';
-import { AutocompleteInput } from '../Registration/AutocompleteInput';
+import { AutocompleteInput } from '../AutoComplete/AutocompleteInput';
 
 const generateRandomPassword = () => {
   const letter = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
