@@ -180,22 +180,33 @@ const TutorControl = () => {
                   key={tutor.id}
                   className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300 flex flex-col"
                 >
-                  <div className="p-6 flex-grow">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-                          {tutor.person.name} {tutor.person.lastname} {tutor.person.second_lastname}
-                        </h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Solicitante</p>
+                  <div className="p-3 flex-grow">
+                    <div className="relative mb-4">
+                      <div className="w-full h-32 overflow-hidden rounded-lg">
+                        <img
+                          src="/images/tutor_banner.png"
+                          alt="Banner del tutor"
+                          className="w-full h-full object-cover brightness-50"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
+                          <div className="w-full flex justify-between items-end">
+                            <div>
+                              <h2 className="text-xl font-semibold text-white">
+                                {tutor.person.name} {tutor.person.lastname} {tutor.person.second_lastname}
+                              </h2>
+                              <p className="text-sm text-gray-300 dark:text-gray-300 mt-1">Solicitante</p>
+                            </div>
+                            <button
+                              onClick={() => openModal(tutor)}
+                              className="text-white hover:text-gray-200 transition text-sm flex items-center bg-black/30 hover:bg-black/40 px-3 py-1 rounded-md"
+                              title="Ver detalles"
+                            >
+                              <FontAwesomeIcon icon={faFileAlt} className="mr-1" />
+                              <span>Detalles</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => openModal(tutor)}
-                        className="text-primary dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary transition text-sm flex items-center"
-                        title="Ver detalles"
-                      >
-                        <FontAwesomeIcon icon={faFileAlt} className="mr-1" />
-                        <span>Detalles</span>
-                      </button>
                     </div>
 
                     <div className="space-y-3">
