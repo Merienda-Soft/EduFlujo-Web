@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ThemeToggler from "./ThemeToggler";
-import { menuData as initialMenuData } from "./menuData";
 import { useUser } from "@auth0/nextjs-auth0/client"; 
 import { destroyCookie } from 'nookies';
 import { useUserRoles } from '../../utils/roleUtils';
 import { getUpdatedMenuData } from "./menuData";
 import { getManagementGlobal, subscribe, setManagementGlobal, initializeManagement } from '../../utils/globalState';
+import UserProfileModal from "../UserManagement/UserProfile";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 
 
 const Header = () => {
@@ -20,6 +22,7 @@ const Header = () => {
   const [menuData, setMenuData] = useState(getUpdatedMenuData());
   
   const { user, isLoading } = useUser();
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const { hasRole, roles } = useUserRoles();
   const pathname = usePathname();
 
@@ -198,17 +201,34 @@ const Header = () => {
                 )}
                 {!isLoading && user && (
                   <div className="flex items-center space-x-4">
-                    <img
-                      src={user.picture}
-                      alt="Profile"
-                      className="rounded-full"
-                      width="40"
-                      height="40"
-                    />
+                    
+                    <div className="relative w-10 h-10">
+                      <img
+                        src={user.picture}
+                        alt="Profile"
+                        className="rounded-full w-full h-full object-cover"
+                      />
+                      
+                      <button 
+                        onClick={() => setShowProfileModal(true)}
+                        className="absolute -top-2 -right-2 rounded-full shadow hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        aria-label="Perfil de usuario"
+                        title="Editar perfil"
+                      >
+                        <FontAwesomeIcon icon={faPencilAlt} className="w-5 h-5" />
+                      </button>
+                    </div>
+
                     <button onClick={handleLogout} className="btn btn-danger">
-                      Cerrar Sesion
+                      Cerrar Sesión
                     </button>
                   </div>
+                )}
+
+                {showProfileModal && (
+                  <UserProfileModal 
+                    onClose={() => setShowProfileModal(false)}
+                  />
                 )}
                 <div>
                   <ThemeToggler />
