@@ -8,6 +8,11 @@ import EditUserForm from "../../components/UserManagement/EditUserForm";
 
 const ITEMS_PER_PAGE = 6;
 
+const ROLE_MAPPING = {
+  'coordinator': 'Coordinador',
+  'professor': 'Profesor'
+};
+
 const UserList = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +20,8 @@ const UserList = () => {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState("Profesor");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   const showLoading = () => {
     Swal.fire({
@@ -99,9 +106,15 @@ const UserList = () => {
           const profesor = profesores.find(
             (p) => p.person.email.trim().toLowerCase() === user.email.trim().toLowerCase()
           );
+          
+          // Mapear roles a descripciones
+          const rolesDescriptions = user.roles ? 
+            user.roles.map(role => ROLE_MAPPING[role] || role) : [];
+            
           return {
             ...user,
             profesorData: profesor,
+            rolesDescriptions,
             searchString: `${user.email} ${profesor?.person.name || ''} ${profesor?.person.lastname || ''} ${profesor?.person.second_lastname || ''} ${profesor?.person.ci || ''}`.toLowerCase()
           };
         });
@@ -120,13 +133,27 @@ const UserList = () => {
     fetchData();
   }, []);
 
-
   const searchedUsers = useMemo(() => {
-    return filteredUsers.filter(user => 
-      searchTerm === "" || 
-      user.searchString.includes(searchTerm.toLowerCase())
-    );
-  }, [filteredUsers, searchTerm]);
+    return filteredUsers.filter(user => {
+      // Filtro por búsqueda
+      const matchesSearch = searchTerm === "" || 
+        user.searchString.includes(searchTerm.toLowerCase());
+      
+      // Filtro por rol
+      const matchesRole = roleFilter === "all" || 
+        (user.rolesDescriptions && 
+         user.rolesDescriptions.some(desc => 
+           desc.toLowerCase() === roleFilter.toLowerCase()
+         ));
+      
+      // Filtro por estado
+      const matchesStatus = statusFilter === "all" || 
+        (statusFilter === "active" && !user.blocked) || 
+        (statusFilter === "blocked" && user.blocked);
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [filteredUsers, searchTerm, roleFilter, statusFilter]);
 
   // Paginación
   const totalPages = Math.ceil(searchedUsers.length / ITEMS_PER_PAGE);
@@ -147,24 +174,53 @@ const UserList = () => {
     <div className="container my-4">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">Lista de Profesores</h2>
-        <div className="relative w-64">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FontAwesomeIcon icon={faSearch} className="text-gray-400" />
+        <div className="flex items-center gap-4">
+          {/* Filtro por rol */}
+          <div className="relative">
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="pl-3 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+            >
+              <option value="Coordinador">Coordinador</option>
+              <option value="Profesor">Profesor</option>
+            </select>
           </div>
-          <input
-            type="text"
-            placeholder="Buscar profesores..."
-            className="pl-10 pr-4 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          
+          {/* Filtro por estado */}
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="pl-3 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+            >
+              <option value="active">Activos</option>
+              <option value="blocked">Bloqueados</option>
+            </select>
+          </div>
+          
+          {/* Barra de búsqueda */}
+          <div className="relative w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FontAwesomeIcon icon={faSearch} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar profesores..."
+              className="pl-10 pr-4 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
       {paginatedUsers.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500 dark:text-gray-400">
-            {searchTerm ? "No se encontraron resultados" : "No hay profesores registrados"}
+            {searchTerm || roleFilter !== "all" || statusFilter !== "all" 
+              ? "No se encontraron resultados con los filtros aplicados" 
+              : "No hay profesores registrados"}
           </p>
         </div>
       ) : (
@@ -172,7 +228,11 @@ const UserList = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {paginatedUsers.map((user) => {
               const isBlocked = user.blocked;
-              const cardStyle = "shadow-lg rounded-lg p-4 flex flex-col h-full bg-white text-black dark:bg-gray-800 dark:text-white";
+              const cardStyle = `shadow-lg rounded-lg p-4 flex flex-col h-full ${
+                isBlocked 
+                  ? "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400" 
+                  : "bg-white dark:bg-gray-800 text-black dark:text-white"
+              }`;
 
               const profesor = user.profesorData;
               const isTecnical = profesor?.is_tecnical === 1;
@@ -239,8 +299,8 @@ const UserList = () => {
                       </p>
                       <p>
                         Roles:{" "}
-                        {user.roles && user.roles.length > 0
-                          ? user.roles.join(", ") 
+                        {user.rolesDescriptions && user.rolesDescriptions.length > 0
+                          ? user.rolesDescriptions.join(", ") 
                           : "Sin roles"}
                       </p>
                     </div>

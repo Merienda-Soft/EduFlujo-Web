@@ -1,12 +1,13 @@
 import { getAccessToken } from '../../api/auth/getAccessToken';
+import pLimit from 'p-limit';
 import axios from 'axios';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const emails = searchParams.get('emails');
-  
+
   const token = await getAccessToken();
-  
+
   if (!emails) {
     return new Response(JSON.stringify({ error: 'Emails parameter is required' }), {
       status: 400,
@@ -15,9 +16,8 @@ export async function GET(request) {
   }
 
   const emailList = emails.split(',').map(email => email.trim().toLowerCase());
-  
+
   try {
-    
     const options = {
       method: 'GET',
       url: `${process.env.AUTH0_AUDIENCE}users`,
@@ -26,40 +26,56 @@ export async function GET(request) {
       },
       params: {
         q: `email:("${emailList.join('" OR "')}")`,
-        search_engine: 'v3'
-      }
+        search_engine: 'v3',
+      },
     };
 
     const response = await axios.request(options);
     const filteredUsers = response.data;
 
-    // Obtenemos roles en batch si es posible
-    const usersWithRoles = await Promise.all(
-      filteredUsers.map(async (user) => {
+    // Función auxiliar con retry
+    async function fetchUserRoles(userId, token) {
+      try {
+        const roleResponse = await axios.get(`${process.env.AUTH0_AUDIENCE}users/${userId}/roles`, {
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        });
+        return roleResponse.data.map(role => role.description);
+      } catch (error) {
+        console.warn(`Fallo al obtener roles para ${userId}. Reintentando...`);
+
         try {
-          const roleResponse = await axios.get(`${process.env.AUTH0_AUDIENCE}users/${user.user_id}/roles`, {
+          await new Promise(res => setTimeout(res, 1000));
+          const retryResponse = await axios.get(`${process.env.AUTH0_AUDIENCE}users/${userId}/roles`, {
             headers: {
               authorization: `Bearer ${token}`,
             },
           });
-          return {
-            ...user,
-            roles: roleResponse.data.map(role => role.description),
-          };
-        } catch (roleError) {
-          console.error(`Error obteniendo roles para el usuario ${user.user_id}`, roleError.message);
-          return {
-            ...user,
-            roles: [],
-          };
+          return retryResponse.data.map(role => role.description);
+        } catch (retryError) {
+          console.error(`Fallo persistente al obtener roles para ${userId}`, retryError.message);
+          return [];
         }
-      })
+      }
+    }
+
+    const limit = pLimit(4);
+
+    const usersWithRoles = await Promise.all(
+      filteredUsers.map(user =>
+        limit(async () => ({
+          ...user,
+          roles: await fetchUserRoles(user.user_id, token),
+        }))
+      )
     );
 
     return new Response(JSON.stringify(usersWithRoles), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('Error listing users:', error);
     return new Response(JSON.stringify({ error: 'Error retrieving users' }), {
@@ -72,7 +88,14 @@ export async function GET(request) {
 
 export async function POST(request) {
   const token = await getAccessToken();
-  const { email, password, name } = await request.json();
+  const { email, password, name, role } = await request.json(); 
+
+  if (role !== 'professor' && role !== 'coordinator') {
+    return new Response(JSON.stringify({ error: 'Rol inválido. Debe ser "professor" o "coordinator"' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   const options = {
     method: 'POST',
@@ -94,7 +117,11 @@ export async function POST(request) {
 
   try {
     const response = await axios.request(options);
-    const userId = response.data.user_id; 
+    const userId = response.data.user_id;
+
+    const roleId = role === 'professor' 
+      ? process.env.AUTH0_PROFESSOR_ROLE_ID 
+      : process.env.AUTH0_COORDINATOR_ROLE_ID;
 
     const assignRoleOptions = {
       method: 'POST',
@@ -104,7 +131,7 @@ export async function POST(request) {
         'Content-Type': 'application/json',
       },
       data: {
-        roles: [process.env.AUTH0_PROFESSOR_ROLE_ID],
+        roles: [roleId], 
       },
     };
 
@@ -117,7 +144,10 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error creando el usuario o asignando rol:', error.response ? error.response.data : error.message);
-    return new Response(JSON.stringify({ error: 'Error creando el usuario o asignando rol', details: error.response ? error.response.data : error.message }), {
+    return new Response(JSON.stringify({ 
+      error: 'Error creando el usuario o asignando rol', 
+      details: error.response ? error.response.data : error.message 
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
