@@ -37,12 +37,12 @@ let menuData: Menu[] = [
     id: 6,
     title: "Cursos",
     path: "/course",
-    roles: ['admin'],
+    roles: ['admin', 'coordinator'],
     newTab: false,
   },
   {
     id: 7,
-    title: "Profesores",
+    title: "Usuarios",
     path: "/user",
     roles: ['admin'],
     newTab: false,
@@ -87,7 +87,7 @@ let menuData: Menu[] = [
     id: 11,
     title: "Gestion",
     newTab: false,
-    roles: ['admin', 'professor', 'student', 'tutor'],
+    roles: ['admin', 'professor', 'student', 'tutor', 'coordinator'],
     submenu: [],
   },
   {
@@ -108,7 +108,7 @@ export const getUpdatedMenuData = (userRoles: string[] = []) => {
     status: management.status,
     path: '#',
     newTab: false,
-    roles: ['admin', 'professor', 'student', 'tutor']
+    roles: ['admin', 'professor', 'student', 'tutor', 'coordinator'],
   }));
 
   return menuData.map(menu => {
