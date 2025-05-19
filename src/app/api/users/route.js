@@ -33,7 +33,6 @@ export async function GET(request) {
     const response = await axios.request(options);
     const filteredUsers = response.data;
 
-    // Función auxiliar con retry
     async function fetchUserRoles(userId, token) {
       try {
         const roleResponse = await axios.get(`${process.env.AUTH0_AUDIENCE}users/${userId}/roles`, {
@@ -46,7 +45,7 @@ export async function GET(request) {
         console.warn(`Fallo al obtener roles para ${userId}. Reintentando...`);
 
         try {
-          await new Promise(res => setTimeout(res, 1000));
+          await new Promise(res => setTimeout(res, 2000));
           const retryResponse = await axios.get(`${process.env.AUTH0_AUDIENCE}users/${userId}/roles`, {
             headers: {
               authorization: `Bearer ${token}`,

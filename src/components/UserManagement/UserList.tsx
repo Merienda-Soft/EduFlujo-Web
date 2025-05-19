@@ -275,9 +275,7 @@ const UserList = () => {
                         </p>
                         <p>
                           <strong>
-                            {isTecnical
-                              ? "Materias Técnicas:"
-                              : "Materias Regulares:"}
+                            Responsabilidad:
                           </strong>
                         </p>
                         <ul className="list-disc list-inside ml-2">
