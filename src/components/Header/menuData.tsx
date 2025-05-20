@@ -3,6 +3,7 @@ import { Menu } from '../../types/menu';
 import { getYearManagements } from '../../utils/managementService';
 import { getManagementGlobal } from '../../utils/globalState';
 import { useUserRoles } from '../../utils/roleUtils';
+import NotificationBell from '../NotificationBell';
 
 let menuData: Menu[] = [
   {
@@ -122,6 +123,14 @@ export const getUpdatedMenuData = (userRoles: string[] = []) => {
     return menu;
   }).filter(menuItem => 
     !menuItem.roles || menuItem.roles.some(role => userRoles.includes(role))
+  );
+};
+
+export const HeaderIcons = () => {
+  return (
+    <div className="flex items-center gap-2">
+      <NotificationBell />
+    </div>
   );
 };
 

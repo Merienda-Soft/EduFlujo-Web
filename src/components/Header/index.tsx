@@ -8,7 +8,7 @@ import ThemeToggler from "./ThemeToggler";
 import { useUser } from "@auth0/nextjs-auth0/client"; 
 import { destroyCookie } from 'nookies';
 import { useUserRoles } from '../../utils/roleUtils';
-import { getUpdatedMenuData } from "./menuData";
+import { getUpdatedMenuData, HeaderIcons } from "./menuData";
 import { getManagementGlobal, subscribe, setManagementGlobal, initializeManagement } from '../../utils/globalState';
 import UserProfileModal from "../UserManagement/UserProfile";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -86,32 +86,25 @@ const Header = () => {
 
   return (
     <>
-      <header className={`header left-0 top-0 z-40 flex w-full items-center ${
-        sticky ? "dark:bg-gray-dark dark:shadow-sticky-dark fixed z-[9999] bg-white !bg-opacity-80 shadow-sticky backdrop-blur-sm transition"
-              : "absolute bg-transparent"}`}>
+      <header className={`fixed w-full z-50 top-0 flex items-center h-[90px] bg-white dark:bg-gray-900 shadow-md transition-all duration-100 ${sticky ? 'h-[70px]' : ''}`}>
         <div className="container">
-          <div className="relative -mx-4 flex items-center justify-between">
-            <div className="w-60 max-w-full px-4 xl:mr-12">
-              <Link href="/" className={`header-logo block w-full ${
-                sticky ? "py-5 lg:py-2" : "py-8"}`}>
-                <Image
-                  src="/images/logo/logo_edu2.png"
+          <div className="relative flex items-center justify-between">
+            <div className="w-60 max-w-full px-4">
+              <Link href="/" className="block w-full py-5">
+                <img
+                  src={sticky ? "/images/logo-small.png" : "/images/logo.png"}
                   alt="logo"
-                  width={140}
-                  height={100}
-                  className="w-full dark:hidden"
+                  className={`w-full dark:hidden ${sticky ? 'max-h-[35px]' : 'max-h-[45px]'}`}
                 />
-                <Image
-                  src="/images/logo/logo_edu1.png"
+                <img
+                  src={sticky ? "/images/logo-small-white.png" : "/images/logo-white.png"}
                   alt="logo"
-                  width={140}
-                  height={100}
-                  className="hidden w-full dark:block"
+                  className={`w-full hidden dark:block ${sticky ? 'max-h-[35px]' : 'max-h-[45px]'}`}
                 />
               </Link>
             </div>
             
-            <div className="flex w-full items-center justify-between px-4">
+            <div className="flex items-center justify-between w-full">
               <div>
                 <button
                   onClick={navbarToggleHandler}
@@ -193,7 +186,9 @@ const Header = () => {
                   </nav>
               </div>
 
-              <div className="flex items-center justify-end pr-16 lg:pr-0">
+              <div className="flex items-center gap-4">
+                <HeaderIcons />
+                <ThemeToggler />
                 {!isLoading && !user && (
                   <Link href="/api/auth/login" className="btn btn-primary">
                     Iniciar Sesion
@@ -230,9 +225,6 @@ const Header = () => {
                     onClose={() => setShowProfileModal(false)}
                   />
                 )}
-                <div>
-                  <ThemeToggler />
-                </div>
               </div>
             </div>
           </div>

@@ -8,6 +8,8 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { getProfessorByEmail } from '../../../../utils/tasksService';
 import { getManagementGlobal, subscribe } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
+import { createNotification } from '../../../../utils/notificationService';
+import { httpRequestFactory } from '../../../../utils/HttpRequestFactory';
 
 // Task filters
 const TASK_FILTERS = {
@@ -105,6 +107,7 @@ export default function TasksPage() {
           professor.id.toString(),
           selectedManagement.toString()
         );
+        console.log('ACTIVITIES:', activities)
         const normalized = activities.map(normalizeTask);
         setTasks(normalized);
       } catch (error) {
@@ -368,11 +371,12 @@ export default function TasksPage() {
             end_date: endDateISO
           }
         };
-        await createActivity(newTask);
+        const createdTask = await createActivity(newTask);
+
         Swal.fire({
           icon: 'success',
           title: 'Tarea creada',
-          text: 'La tarea se creó correctamente.',
+          text: 'La tarea se creó correctamente y se notificó a los estudiantes.',
           timer: 1800,
           showConfirmButton: false
         });

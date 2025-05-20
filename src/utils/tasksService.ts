@@ -17,8 +17,9 @@ export const getActivities = async (materiaId: string, cursoId: string, teacherI
         const { url, config } = httpRequestFactory.createRequest(
             `/tasks/professor/${teacherId}/course/${cursoId}/subject/${materiaId}/management/${managementId}`
         );
+        console.log(url, config);
         const response = await fetch(url, config);
-        
+        console.log(response);
         if (response.status === 404) {
             throw new Error('NO_TASKS');
         }
@@ -27,7 +28,8 @@ export const getActivities = async (materiaId: string, cursoId: string, teacherI
             throw new Error(`Error al obtener las actividades: ${response.status}`);
         }
 
-        return await response.json();
+        const result = await response.json();
+        return result.data || [];
     } catch (error) {
         console.error(error);
         throw error;
