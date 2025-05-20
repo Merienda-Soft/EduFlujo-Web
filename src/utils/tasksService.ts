@@ -187,12 +187,6 @@ export const getTasksReportByCourse = async (courseId: string, professorId: stri
         const { url, config } = httpRequestFactory.createRequest(
             `/tasks/course/${courseId}/professor/${professorId}/management/${managementId}?download=true${quarter ? `&quarter=${quarter}` : ''}`
         );
-        
-        // Modificar el config para aceptar blob
-        config.headers = {
-            ...config.headers,
-            'Accept': 'application/octet-stream'
-        };
 
         const response = await fetch(url, config);
         
@@ -200,31 +194,47 @@ export const getTasksReportByCourse = async (courseId: string, professorId: stri
             throw new Error(`Error al obtener el reporte: ${response.status}`);
         }
 
-        // Obtener el blob de la respuesta
-        const blob = await response.blob();
+        const data = await response.json();
         
-        // Crear URL del blob
-        const downloadUrl = window.URL.createObjectURL(blob);
-        
-        // Crear un elemento <a> temporal para la descarga
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        
-        // Obtener el nombre del archivo del header Content-Disposition si existe
-        const contentDisposition = response.headers.get('Content-Disposition');
-        const fileName = contentDisposition
-            ? contentDisposition.split('filename=')[1]?.replace(/["']/g, '')
-            : `reporte_trimestre_${quarter || '1'}.xlsx`;
+        if (!data.ok) {
+            throw new Error(data.error || 'Error al obtener el reporte');
+        }
+
+        // Función auxiliar para descargar archivo
+        const downloadFile = (url: string, fileName: string) => {
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // Si es un trimestre específico
+        if (quarter) {
+            const { downloadUrl, fileName } = data;
+            if (!downloadUrl) {
+                throw new Error('No se recibió la URL de descarga del reporte');
+            }
             
-        link.setAttribute('download', fileName);
-        
-        // Agregar el link al documento, hacer click y removerlo
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Limpiar la URL del blob
-        window.URL.revokeObjectURL(downloadUrl);
+            downloadFile(downloadUrl, fileName);
+            return { success: true };
+        }
+
+        // Si son todos los trimestres
+        const { reports } = data;
+        if (!reports || !Array.isArray(reports)) {
+            throw new Error('No se recibieron los reportes correctamente');
+        }
+
+        // Descargar cada reporte con un pequeño delay entre cada uno
+        reports.forEach((report, index) => {
+            if (report.url) {
+                setTimeout(() => {
+                    downloadFile(report.url, report.fileName);
+                }, index * 1000); // 1 segundo de delay entre cada descarga
+            }
+        });
         
         return { success: true };
     } catch (error) {

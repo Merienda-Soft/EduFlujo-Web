@@ -83,9 +83,7 @@ export const getNotificationsByPerson = async (email: string) => {
 
 export const markNotificationAsRead = async (notificationId: number) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/notifications/${notificationId}/read`, {
-      method: 'PUT'
-    });
+    const { url, config } = httpRequestFactory.createRequest(`/notifications/${notificationId}/read`);
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error marking notification as read');
     return true;
