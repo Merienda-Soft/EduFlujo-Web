@@ -90,16 +90,21 @@ const Header = () => {
         <div className="container">
           <div className="relative flex items-center justify-between">
             <div className="w-60 max-w-full px-4">
-              <Link href="/" className="block w-full py-5">
-                <img
-                  src={sticky ? "/images/logo-small.png" : "/images/logo.png"}
+               <Link href="/" className={`header-logo block w-full ${
+                sticky ? "py-5 lg:py-2" : "py-8"}`}>
+                <Image
+                  src="/images/logo/logo_edu2.png"
                   alt="logo"
-                  className={`w-full dark:hidden ${sticky ? 'max-h-[35px]' : 'max-h-[45px]'}`}
+                  width={140}
+                  height={100}
+                  className="w-full dark:hidden"
                 />
-                <img
-                  src={sticky ? "/images/logo-small-white.png" : "/images/logo-white.png"}
+                <Image
+                  src="/images/logo/logo_edu1.png"
                   alt="logo"
-                  className={`w-full hidden dark:block ${sticky ? 'max-h-[35px]' : 'max-h-[45px]'}`}
+                  width={140}
+                  height={100}
+                  className="hidden w-full dark:block"
                 />
               </Link>
             </div>
