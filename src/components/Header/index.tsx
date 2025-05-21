@@ -86,10 +86,12 @@ const Header = () => {
 
   return (
     <>
-      <header className={`fixed w-full z-50 top-0 flex items-center h-[90px] bg-white dark:bg-gray-900 shadow-md transition-all duration-100 ${sticky ? 'h-[70px]' : ''}`}>
+      <header className={`header left-0 top-0 z-40 flex w-full items-center ${
+        sticky ? "dark:bg-gray-dark dark:shadow-sticky-dark fixed z-[9999] bg-white !bg-opacity-80 shadow-sticky backdrop-blur-sm transition"
+              : "absolute bg-transparent"}`}>
         <div className="container">
-          <div className="relative flex items-center justify-between">
-            <div className="w-60 max-w-full px-4">
+          <div className="relative -mx-4 flex items-center justify-between">
+            <div className="w-60 max-w-full px-4 xl:mr-12">
                <Link href="/" className={`header-logo block w-full ${
                 sticky ? "py-5 lg:py-2" : "py-8"}`}>
                 <Image
@@ -109,7 +111,7 @@ const Header = () => {
               </Link>
             </div>
             
-            <div className="flex items-center justify-between w-full">
+            <div className="flex w-full items-center justify-between px-4">
               <div>
                 <button
                   onClick={navbarToggleHandler}
@@ -191,7 +193,7 @@ const Header = () => {
                   </nav>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-end pr-16 lg:pr-0">
                 <HeaderIcons />
                 <ThemeToggler />
                 {!isLoading && !user && (
