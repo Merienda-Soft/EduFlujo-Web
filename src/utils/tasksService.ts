@@ -185,9 +185,9 @@ export const cancelSubmitTaskFiles = async (taskId: string, studentId: string) =
 export const getTasksReportByCourse = async (courseId: string, professorId: string, managementId: string, quarter?: string) => {
     try {
         const { url, config } = httpRequestFactory.createRequest(
-            `/tasks/course/${courseId}/professor/${professorId}/management/${managementId}?download=true${quarter ? `&quarter=${quarter}` : ''}`
+            `/tasks/course/${courseId}/professor/${professorId}/management/${managementId}`
         );
-
+        console.log(url, config)
         const response = await fetch(url, config);
         
         if (!response.ok) {
@@ -195,7 +195,7 @@ export const getTasksReportByCourse = async (courseId: string, professorId: stri
         }
 
         const data = await response.json();
-        
+        console.log(data)
         if (!data.ok) {
             throw new Error(data.error || 'Error al obtener el reporte');
         }
@@ -210,24 +210,22 @@ export const getTasksReportByCourse = async (courseId: string, professorId: stri
             document.body.removeChild(link);
         };
 
-        // Si es un trimestre específico
-        if (quarter) {
-            const { downloadUrl, fileName } = data;
-            if (!downloadUrl) {
-                throw new Error('No se recibió la URL de descarga del reporte');
-            }
-            
-            downloadFile(downloadUrl, fileName);
-            return { success: true };
-        }
-
-        // Si son todos los trimestres
-        const { reports } = data;
+        const { reports } = data.data;
         if (!reports || !Array.isArray(reports)) {
             throw new Error('No se recibieron los reportes correctamente');
         }
 
-        // Descargar cada reporte con un pequeño delay entre cada uno
+        // Si se especifica un trimestre, descargar solo ese reporte
+        if (quarter) {
+            const quarterReport = reports.find(r => r.quarter === Number(quarter));
+            if (!quarterReport) {
+                throw new Error(`No se encontró el reporte para el trimestre ${quarter}`);
+            }
+            downloadFile(quarterReport.url, quarterReport.fileName);
+            return { success: true };
+        }
+
+        // Si no se especifica trimestre, descargar todos con delay
         reports.forEach((report, index) => {
             if (report.url) {
                 setTimeout(() => {
