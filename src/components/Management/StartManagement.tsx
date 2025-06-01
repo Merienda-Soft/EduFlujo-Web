@@ -225,8 +225,11 @@ const StartManagement = () => {
         icon: 'success',
         title: 'Gestión creada con éxito',
         text: `La gestión para el año ${currentYear} ha sido creada exitosamente.`,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = '/';
+        }
       });
-      window.location.href = '/course';
     } catch (error) {
       console.error('Error al crear la gestión:', error);
       Swal.fire({
