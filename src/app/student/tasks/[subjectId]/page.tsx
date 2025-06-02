@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { getTasksByStudentId } from "../../../../utils/tasksService";
 import { getCurrentManagementData, getManagementGlobal, subscribe } from "../../../../utils/globalState";
 import Swal from "sweetalert2";
@@ -15,9 +15,9 @@ const STATUS_FILTERS = {
 };
 
 const STATUS_COLORS = {
-  0: "bg-orange-500", // Pendiente - Naranja
-  1: "bg-green-500", // Entregada - Verde
-  2: "bg-blue-500", // Devuelta - Azul
+  0: "bg-orange-500",
+  1: "bg-green-500",
+  2: "bg-blue-500", 
 };
 
 export default function StudentTasksPage() {
@@ -30,17 +30,6 @@ export default function StudentTasksPage() {
   const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
   const materiaName = searchParams.get("materiaName");
 
-  // Suscribirse a cambios en la gestión
-  useEffect(() => {
-    const unsubscribe = subscribe(() => {
-      const { id } = getManagementGlobal();
-      if (id) {
-        setSelectedManagement(id);
-      }
-    });
-    return unsubscribe;
-  }, []);
-
   const [searchValue, setSearchValue] = useState("");
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,6 +38,8 @@ export default function StudentTasksPage() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const tasksPerPage = 5;
 
   const monthNames = useMemo(
     () => [
@@ -104,6 +95,7 @@ export default function StudentTasksPage() {
       newDate.setMonth(prev.getMonth() - 1);
       return newDate;
     });
+    setCurrentPage(1);
   }, []);
 
   const handleNextMonth = useCallback(() => {
@@ -112,6 +104,7 @@ export default function StudentTasksPage() {
       newDate.setMonth(prev.getMonth() + 1);
       return newDate;
     });
+    setCurrentPage(1);
   }, []);
 
   const filteredTasks = useMemo(() => {
@@ -133,6 +126,18 @@ export default function StudentTasksPage() {
     });
   }, [tasks, searchValue, currentDate, statusFilter]);
 
+  // Pagination logic
+  const totalTasks = filteredTasks.length;
+  const totalPages = Math.ceil(totalTasks / tasksPerPage);
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (currentPage - 1) * tasksPerPage;
+    return filteredTasks.slice(startIndex, startIndex + tasksPerPage);
+  }, [filteredTasks, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-28 lg:pt-[150px]">
       {/* Header */}
@@ -141,7 +146,7 @@ export default function StudentTasksPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tareas</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Gestión {selectedManagement}
+              Gestión {selectedManagement} - {materiaName}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -166,14 +171,20 @@ export default function StudentTasksPage() {
               type="text"
               placeholder="Buscar tarea..."
               value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              onChange={(e) => {
+                setSearchValue(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full md:w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
             />
             <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
               {Object.entries(STATUS_FILTERS).map(([key, label]) => (
                 <button
                   key={key}
-                  onClick={() => setStatusFilter(key)}
+                  onClick={() => {
+                    setStatusFilter(key);
+                    setCurrentPage(1);
+                  }}
                   className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-colors duration-150 ${
                     statusFilter === key
                       ? 'bg-blue-500 text-white'
@@ -223,28 +234,38 @@ export default function StudentTasksPage() {
             <p className="text-base text-gray-400 dark:text-gray-500">¡No hay tareas asignadas para este período!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fadeIn">
-            {filteredTasks.map((task) => {
+          <div className="space-y-4">
+            {paginatedTasks.map((task) => {
               const isLate = new Date(task.end_date) < new Date() && task.status === 0;
               return (
                 <div
                   key={task.id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 flex flex-col justify-between group transition-all duration-200 hover:shadow-xl"
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6 flex flex-col md:flex-row md:items-center gap-6 group transition-all duration-200 hover:shadow-lg"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-2 h-2 rounded-full ${isLate ? "bg-red-500" : "bg-green-500"}`} />
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                        {task.name}
-                      </h3>
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[task.status]}`}>
+                  {/* Icono de tarea */}
+                  <div className="flex-shrink-0">
+                    <DocumentTextIcon className="h-8 w-8 text-blue-500 dark:text-blue-400" />
+                  </div>
+
+                  {/* Contenido principal */}
+                  <div className="flex-1">
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isLate ? "bg-red-500" : "bg-green-500"}`} />
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          {task.name}
+                        </h3>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[task.status]}`}>
                         {task.status === 0 ? "Pendiente" : task.status === 1 ? "Entregada" : "Devuelta"}
                       </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 mb-3 line-clamp-3 min-h-[48px]">
+                    
+                    <p className="text-gray-600 dark:text-gray-300 mb-3">
                       {task.description}
                     </p>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center gap-1">
                         <CalendarIcon className="h-4 w-4" />
                         <span>Creada: {new Date(task.createDate).toLocaleDateString()}</span>
@@ -253,41 +274,89 @@ export default function StudentTasksPage() {
                         <ClockIcon className="h-4 w-4" />
                         <span>Entrega: {new Date(task.end_date).toLocaleDateString()}</span>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <AcademicCapIcon className="h-4 w-4" />
+                        <span>{task.dimension.dimension}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">Peso:</span>
+                        <span>{task.weight}%</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-4 justify-between">
-                    <div className="flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
-                      <AcademicCapIcon className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300">
-                        {task.dimension.dimension}
-                      </span>
-                    </div>
-                    <div className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-medium">
-                      {task.weight}%
-                    </div>
+
+                  {/* Botón de acción */}
+                  <div className="flex-shrink-0">
                     <button
-                      className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold transition"
-                      title="Ver detalles de la tarea"
                       onClick={() => router.push(`/student/tasks/${subjectId}/${task.id}?courseId=${courseId}&studentId=${studentId}&managementId=${selectedManagement}`)}
+                      className="w-full md:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2"
                     >
-                      Ver Detalles =&gt;
+                      Ver Detalles
+                      <ChevronRightIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               );
             })}
+
+            {/* Paginación */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Mostrando <span className="font-medium">{(currentPage - 1) * tasksPerPage + 1}</span> a <span className="font-medium">
+                    {Math.min(currentPage * tasksPerPage, totalTasks)}
+                  </span> de <span className="font-medium">{totalTasks}</span> tareas
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1"
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                    Anterior
+                  </button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-4 py-2 border rounded-md text-sm font-medium ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 border-blue-600 text-white'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1"
+                  >
+                    Siguiente
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease;
-        }
-      `}</style>
     </div>
   );
-} 
+}

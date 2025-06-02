@@ -3,10 +3,36 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { getTaskByIdWithAssignmentsForStudent, submitTaskFiles, cancelSubmitTaskFiles } from "../../../../../utils/tasksService";
-import { CalendarIcon, ClockIcon, AcademicCapIcon, DocumentIcon, XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, ClockIcon, AcademicCapIcon, DocumentIcon, XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon, ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import Swal from "sweetalert2";
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../../../../utils/firebase/firebaseConfig';
+
+const STATUS_COLORS = {
+  0: "bg-orange-500",
+  1: "bg-green-500",
+  2: "bg-blue-500", 
+};
+
+const FILE_ICONS = {
+  'pdf': '/images/file-icons/pdf.png',
+  'doc': '/images/file-icons/word.png',
+  'docx': '/images/file-icons/word.png',
+  'xls': '/images/file-icons/excel.png',
+  'xlsx': '/images/file-icons/excel.png',
+  'ppt': '/images/file-icons/powerpoint.png',
+  'pptx': '/images/file-icons/powerpoint.png',
+  'jpg': '/images/file-icons/image.png',
+  'jpeg': '/images/file-icons/image.png',
+  'png': '/images/file-icons/image.png',
+  'gif': '/images/file-icons/image.png',
+  'mp4': '/images/file-icons/video.png',
+  'mov': '/images/file-icons/video.png',
+  'avi': '/images/file-icons/video.png',
+  'txt': '/images/file-icons/txt.png',
+  'zip': '/images/file-icons/zip.png',
+  'default': '/images/file-icons/file.png'
+};
 
 export default function TaskDetailPage() {
   const searchParams = useSearchParams();
@@ -116,6 +142,11 @@ export default function TaskDetailPage() {
     window.open(fileUrl, '_blank');
   };
 
+  const getFileIcon = (fileName) => {
+    const extension = fileName.split('.').pop().toLowerCase();
+    return FILE_ICONS[extension] || FILE_ICONS['default'];
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-28 lg:pt-[150px] flex items-center justify-center">
@@ -129,6 +160,7 @@ export default function TaskDetailPage() {
   const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
+  const statusColor = STATUS_COLORS[assignment?.status || 0];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-28 lg:pt-[150px]">
@@ -139,17 +171,21 @@ export default function TaskDetailPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{task?.name}</h1>
               <div className="mt-2 flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isLate ? "bg-red-500" : "bg-green-500"}`} />
-                <span className={`text-sm font-medium ${isLate ? "text-red-500" : "text-green-500"}`}>
-                  {isLate ? 'Vencida' : 'En tiempo'}
+                <div className={`w-2 h-2 rounded-full ${statusColor}`} />
+                <span className={`text-sm font-medium ${statusColor.replace('bg', 'text')}`}>
+                  {assignment?.status === 0 ? 'Pendiente' : 
+                   assignment?.status === 1 ? 'Entregado' : 
+                   assignment?.status === 2 ? 'Calificado' : ''}
+                  {isLate && !isSubmitted && ' (Vencida)'}
                 </span>
               </div>
             </div>
             <button
               onClick={() => router.back()}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white"
             >
-              Volver
+              <ArrowLeftIcon className="h-5 w-5" />
+              <span>Volver</span>
             </button>
           </div>
         </div>
@@ -161,77 +197,65 @@ export default function TaskDetailPage() {
           {/* Task Details */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Descripción</h2>
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Descripción</h2>
+                {isSubmitted && assignment?.status !== 2 && (
+                  <button
+                    onClick={handleCancelSubmit}
+                    className="text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-medium"
+                  >
+                    Cancelar envío
+                  </button>
+                )}
+              </div>
               <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
                 {task?.description}
               </p>
             </div>
 
+            {/* Submission Section - Movido aquí */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Detalles</h2>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-300">
-                    Fecha límite: {new Date(task?.end_date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <AcademicCapIcon className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-300">
-                    Calificación: {qualification}
-                  </span>
-                </div>
-                {comment && (
-                  <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
-                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                      Comentario del profesor
-                    </h3>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      {comment}
-                    </p>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Entrega de tarea
+                </h2>
+                {isSubmitted && (
+                  <div className="flex items-center gap-2 text-green-500">
+                    <CheckCircleIcon className="h-5 w-5" />
+                    <span className="font-medium">Tarea entregada</span>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Submission Section */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-24">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Entrega de tarea
-              </h2>
 
               {isSubmitted ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-green-500">
-                    <CheckCircleIcon className="h-6 w-6" />
-                    <span className="font-medium">Tarea entregada</span>
-                  </div>
-
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Archivos enviados:
                     </h3>
                     {submittedFiles.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {submittedFiles.map((file, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                           >
-                            <div className="flex items-center gap-2">
-                              <DocumentIcon className="h-5 w-5 text-gray-400" />
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={getFileIcon(file.name)} 
+                                alt="File icon" 
+                                className="h-6 w-6 object-contain"
+                              />
                               <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
                                 {file.name}
                               </span>
                             </div>
                             <button
                               onClick={() => handleOpenFile(file.url)}
-                              className="text-blue-500 hover:text-blue-600"
+                              className="text-blue-500 hover:text-blue-600 p-1"
+                              title="Descargar"
                             >
-                              Ver
+                              <ArrowDownTrayIcon className="h-5 w-5" />
                             </button>
                           </div>
                         ))}
@@ -242,18 +266,6 @@ export default function TaskDetailPage() {
                       </p>
                     )}
                   </div>
-
-                  <button
-                    onClick={handleCancelSubmit}
-                    disabled={assignment.status === 2}
-                    className={`w-full px-4 py-2 rounded-md text-white font-medium ${
-                      assignment.status === 2
-                        ? 'bg-red-400 cursor-not-allowed'
-                        : 'bg-red-500 hover:bg-red-600'
-                    }`}
-                  >
-                    Cancelar Envío
-                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -277,21 +289,25 @@ export default function TaskDetailPage() {
                   </div>
 
                   {selectedFiles.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {selectedFiles.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                         >
-                          <div className="flex items-center gap-2">
-                            <DocumentIcon className="h-5 w-5 text-gray-400" />
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={getFileIcon(file.name)} 
+                              alt="File icon" 
+                              className="h-6 w-6 object-contain"
+                            />
                             <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
                               {file.name}
                             </span>
                           </div>
                           <button
                             onClick={() => handleRemoveFile(index)}
-                            className="text-red-500 hover:text-red-600"
+                            className="text-red-500 hover:text-red-600 p-1"
                           >
                             <XMarkIcon className="h-5 w-5" />
                           </button>
@@ -322,8 +338,39 @@ export default function TaskDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Details Section - Movido aquí */}
+          <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-24">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Detalles</h2>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600 dark:text-gray-300">
+                    Fecha límite: {new Date(task?.end_date).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AcademicCapIcon className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-600 dark:text-gray-300">
+                    Calificación: {qualification}
+                  </span>
+                </div>
+                {comment && (
+                  <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      Comentario del profesor
+                    </h3>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {comment}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-} 
+}
