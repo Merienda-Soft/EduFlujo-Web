@@ -119,6 +119,11 @@ const CoursesList = () => {
       setLoading(false);
     }
   };
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshCourses = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   useEffect(() => {
     const handleManagementChange = () => {
@@ -199,9 +204,10 @@ const CoursesList = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4 md:mb-0">
-          Gestión de Cursos - {getCurrentManagementData().management}
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl">Cursos y Materias - {getCurrentManagementData().management}</h1>
+          <div className="space-x-4"></div>
+        </div>
         
         {isCurrentManagementActive() && (
           <button
@@ -265,8 +271,8 @@ const CoursesList = () => {
                 </button>
               </div>
           
-              <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">
-                📚 Materias:
+              <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2 text-center">
+                MATERIAS
               </h3>
               <ul className="space-y-1 flex-grow">
                 {course.curriculums.map(curriculum => (
@@ -329,6 +335,7 @@ const CoursesList = () => {
                 }
               : null
           }
+          refreshCourses={fetchCourses}
         />
         
     </div>

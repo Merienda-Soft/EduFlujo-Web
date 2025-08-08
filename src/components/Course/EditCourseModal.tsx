@@ -23,9 +23,10 @@ interface EditCourseModalProps {
   show: boolean;
   onClose: () => void;
   course: Course | null;
+  refreshCourses: () => void;
 }
 
-const EditCourseModal: React.FC<EditCourseModalProps> = ({ show, onClose, course }) => {
+const EditCourseModal: React.FC<EditCourseModalProps> = ({ show, onClose, course, refreshCourses }) => {
   const [availableMaterias, setAvailableMaterias] = useState<Materia[]>([]);
   const [selectedMaterias, setSelectedMaterias] = useState<Materia[]>([]);
   const [error, setError] = useState<string>('');
@@ -91,11 +92,16 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ show, onClose, course
         icon: 'success',
         confirmButtonText: 'OK',
       }).then(() => {
-        onClose();
-        window.location.reload();
+        refreshCourses();
+        onClose(); 
       });
     } catch (err) {
       setError('No se pudo actualizar el curso.');
+      Swal.fire({
+        title: 'Error',
+        text: 'Ocurrió un error al actualizar el curso',
+        icon: 'error',
+      });
     } finally {
       setLoading(false);
     }
