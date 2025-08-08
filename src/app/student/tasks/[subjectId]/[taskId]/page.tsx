@@ -7,6 +7,7 @@ import { CalendarIcon, ClockIcon, AcademicCapIcon, DocumentIcon, XMarkIcon, Arro
 import Swal from "sweetalert2";
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../../../../utils/firebase/firebaseConfig';
+import StudentEvaluationView from '../../../../../components/Task/Student/StudentEvaluationView'
 
 const STATUS_COLORS = {
   0: "bg-orange-500",
@@ -156,6 +157,10 @@ export default function TaskDetailPage() {
   }
 
   const assignment = task?.assignments?.[0];
+  const normalizedData = {
+      type: assignment.type,
+      methodology: assignment.evaluation_methodology 
+  };
   const qualification = assignment?.qualification?.trim() || '-';
   const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
@@ -367,6 +372,11 @@ export default function TaskDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+            <div>
+              <StudentEvaluationView 
+                methodology={normalizedData} 
+              />
             </div>
           </div>
         </div>
