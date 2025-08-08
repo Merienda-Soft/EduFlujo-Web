@@ -46,7 +46,8 @@
     "react-modal-video": "^2.0.2",
     "reactstrap": "^9.2.3",
     "sweetalert2": "^11.14.2",
-    "sweetalert2-react-content": "^5.0.7"
+    "sweetalert2-react-content": "^5.0.7",
+    "zod": "^4.0.15"
   },
   "devDependencies": {
     "@types/node": "22.7.4",
