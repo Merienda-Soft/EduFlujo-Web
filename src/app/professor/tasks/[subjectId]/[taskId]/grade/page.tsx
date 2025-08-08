@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { getActivityByIdWithAssignments, updateTaskGrades, getTaskByIdWithAssignmentsForStudent } from '../../../../../../utils/tasksService';
+import EvaluationToolViewer from '../../../../../../components/Task/Evaluation/EvaluationToolViewer'
 import Swal from 'sweetalert2';
 
 export default function GradeTaskPage() {
@@ -27,6 +28,7 @@ export default function GradeTaskPage() {
       setIsLoading(true);
       try {
         const response = await getActivityByIdWithAssignments(params.taskId);
+        console.log('Evaluation methodology structure:', response);
         setTask(response.task);
         if (response.task && response.task.assignments) {
           setStudents(response.task.assignments.map(a => ({
@@ -34,7 +36,12 @@ export default function GradeTaskPage() {
             nombre: `${a.student.person.name} ${a.student.person.lastname} ${a.student.person.second_lastname || ''}`,
             calificacion: (a.qualification || '').trim(),
             comentario: a.comment || '',
-            status: a.status
+            status: a.status,
+            evaluationTool: {
+              type: a.type,  
+              methodology: a.evaluation_methodology  
+            },
+            evaluation_methodology: a.evaluation_methodology
           })));
         }
       } catch (error) {
@@ -64,13 +71,24 @@ export default function GradeTaskPage() {
     setChangeCount(c => c + 1);
   }, []);
 
+  // Nueva función para manejar cambios en evaluation_methodology
+  const handleEvaluationMethodologyChange = useCallback((studentIndex, updatedMethodology) => {
+    setStudents(prev => {
+      const updated = [...prev];
+      updated[studentIndex].evaluation_methodology = updatedMethodology;
+      return updated;
+    });
+    setChangeCount(c => c + 1);
+  }, []);
+
   const saveGrades = async () => {
     setIsSaving(true);
     try {
       const studentsData = students.map(s => ({
         student_id: s.id,
         qualification: s.calificacion,
-        comment: s.comentario || ''
+        comment: s.comentario || '',
+        evaluation_methodology: s.evaluation_methodology 
       }));
       console.log('Enviando a backend:', studentsData);
       const response = await updateTaskGrades(params.taskId, studentsData);
@@ -123,11 +141,27 @@ export default function GradeTaskPage() {
       const studentsData = [{
         student_id: assignment.student_id,
         qualification: assignment.qualification,
-        comment: assignment.comment || ''
+        comment: assignment.comment || '',
+        evaluation_methodology: assignment.evaluation_methodology // Incluir evaluation_methodology actualizado
       }];
       console.log('Enviando a backend:', studentsData);
       const response = await updateTaskGrades(params.taskId, studentsData);
       if (!response.ok) throw new Error('Error al guardar');
+      
+      // Actualizar el estado local de students con los nuevos datos
+      setStudents(prev => prev.map(student => {
+        if (student.id === assignment.student_id) {
+          return {
+            ...student,
+            calificacion: assignment.qualification,
+            comentario: assignment.comment || '',
+            evaluation_methodology: assignment.evaluation_methodology
+          };
+        }
+        return student;
+      }));
+      
+      setChangeCount(0);
       Swal.fire({ icon: 'success', title: 'Éxito', text: 'Calificación actualizada correctamente', timer: 1800, showConfirmButton: false });
       setShowReviewModal(false);
     } catch (error) {
@@ -136,6 +170,27 @@ export default function GradeTaskPage() {
       setReviewSaving(false);
     }
   };
+
+  // Manejar cambios en el modal de revisión
+  const handleReviewEvaluationChange = useCallback((updatedMethodology) => {
+    setReviewData(prev => ({
+      ...prev,
+      assignments: [{
+        ...prev.assignments[0],
+        evaluation_methodology: updatedMethodology
+      }]
+    }));
+  }, []);
+
+  const handleReviewScoreChange = useCallback((score) => {
+    setReviewData(prev => ({
+      ...prev,
+      assignments: [{
+        ...prev.assignments[0],
+        qualification: String(score)
+      }]
+    }));
+  }, []);
 
   if (isLoading) {
     return <div className="flex flex-col items-center justify-center min-h-[40vh] py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div><p className="text-lg text-gray-600">Cargando tarea...</p></div>;
@@ -242,130 +297,186 @@ export default function GradeTaskPage() {
       </div>
       {/* MODAL DE REVISAR ENTREGA */}
       {showReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 w-full max-w-2xl relative animate-fadeIn">
-            <button className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 dark:hover:text-white" onClick={() => setShowReviewModal(false)}>
-              <span className="text-2xl">&times;</span>
-            </button>
-            {reviewLoading ? (
-              <div className="flex flex-col items-center justify-center min-h-[200px]"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div><p className="text-lg text-gray-600">Cargando entrega...</p></div>
-            ) : reviewData && reviewData.assignments && reviewData.assignments[0] ? (
-              <div>
-                <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col relative animate-fadeIn">
+            {/* Header fijo */}
+            <div className="p-6 pb-0 sticky top-0 bg-white dark:bg-gray-800 z-10 border-b dark:border-gray-700">
+              <div className="flex justify-between items-start">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                   Entrega de {reviewStudentName}
                 </h2>
-                <div className="mb-2 text-gray-500 dark:text-gray-400">{reviewData.description}</div>
-                <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  <span>Fecha límite: {reviewData.end_date ? new Date(reviewData.end_date).toLocaleDateString() : ''}</span>
-                  <span>Ponderación: {reviewData.weight}%</span>
-                </div>
-                <div className="mb-4">
-                  <span className="font-semibold">Estado: </span>
-                  {reviewData.assignments[0].status === 2 ? (
-                    <span className="text-purple-600 font-semibold">Evaluada</span>
-                  ) : reviewData.assignments[0].status === 1 ? (
-                    <span className="text-green-600 font-semibold">Entregada</span>
-                  ) : (
-                    <span className="text-red-600 font-semibold">No entregada</span>
-                  )}
-                </div>
-                {/* Archivos entregados */}
-                <div className="mb-4">
-                  <div className="font-semibold mb-2">Archivos entregados:</div>
-                  {reviewData.assignments[0].files && reviewData.assignments[0].files.length > 0 ? (
-                    <ul className="space-y-2 bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
-                      {reviewData.assignments[0].files.map((file, idx) => (
-                        <li key={file.url} className="flex items-center gap-2">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                            {file.name || 'Archivo'}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="text-gray-500 italic bg-gray-100 dark:bg-gray-900 rounded-lg p-4">No hay archivos entregados.</div>
-                  )}
-                </div>
-                {/* Calificación y comentario */}
-                <div className="mb-4">
-                  <label className="block font-semibold mb-1">Nota</label>
-                  <input
-                    type="number"
-                    className="w-32 px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
-                    placeholder="Nota"
-                    value={
-                      reviewData.assignments[0].qualification && reviewData.assignments[0].qualification.trim() !== ""
-                        ? Number(reviewData.assignments[0].qualification.trim())
-                        : ""
-                    }
-                    min={0}
-                    max={100}
-                    onKeyDown={e => {
-                      // Permitir: backspace, tab, flechas, delete, home, end
-                      if (
-                        !(
-                          (e.key >= '0' && e.key <= '9') ||
-                          ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End'].includes(e.key)
-                        )
-                      ) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onInput={e => {
-                      const input = e.target as HTMLInputElement;
-                      let value = input.value;
-                      // Permitir vacío
-                      if (value === "") {
-                        setReviewData(prev => ({
-                          ...prev,
-                          assignments: [{ ...prev.assignments[0], qualification: "" }]
-                        }));
-                        return;
-                      }
-                      // Limitar a 3 dígitos y a 100
-                      let num = Number(value);
-                      if (num > 100) num = 100;
-                      if (num < 0) num = 0;
-                      setReviewData(prev => ({
-                        ...prev,
-                        assignments: [{ ...prev.assignments[0], qualification: String(num) }]
-                      }));
-                      input.value = String(num);
-                    }}
-                    maxLength={3}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block font-semibold mb-1">Comentario</label>
-                  <textarea
-                    className="w-full px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                    placeholder="Comentario"
-                    value={reviewData.assignments[0].comment || ''}
-                    onChange={e => {
-                      if (e.target.value.length <= 300) {
-                        setReviewData(prev => ({ ...prev, assignments: [{ ...prev.assignments[0], comment: e.target.value }] }));
-                      }
-                    }}
-                    maxLength={300}
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleSaveReview}
-                    disabled={reviewSaving}
-                    className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition"
-                  >
-                    {reviewSaving ? 'Guardando...' : 'Guardar Calificación'}
-                  </button>
-                </div>
+                <button 
+                  className="text-gray-500 hover:text-gray-800 dark:hover:text-white"
+                  onClick={() => setShowReviewModal(false)}
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
               </div>
-            ) : (
-              <div className="text-center text-gray-500">No se encontró información de la entrega.</div>
-            )}
+            </div>
+
+            {/* Contenido con scroll */}
+            <div className="overflow-y-auto flex-1 p-6">
+              {reviewLoading ? (
+                <div className="flex flex-col items-center justify-center min-h-[200px]">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
+                  <p className="text-lg text-gray-600">Cargando entrega...</p>
+                </div>
+              ) : reviewData && reviewData.assignments && reviewData.assignments[0] ? (
+                <>
+                  <div className="mb-4 text-gray-500 dark:text-gray-400">
+                    {reviewData.description}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-6 text-sm text-gray-500 dark:text-gray-400">
+                    <div>
+                      <span className="font-semibold">Fecha límite:</span> 
+                      {reviewData.end_date ? new Date(reviewData.end_date).toLocaleDateString() : 'N/A'}
+                    </div>
+                    <div>
+                      <span className="font-semibold">Ponderación:</span> {reviewData.weight}%
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <span className="font-semibold">Estado: </span>
+                    {reviewData.assignments[0].status === 2 ? (
+                      <span className="text-purple-600 font-semibold">Evaluada</span>
+                    ) : reviewData.assignments[0].status === 1 ? (
+                      <span className="text-green-600 font-semibold">Entregada</span>
+                    ) : (
+                      <span className="text-red-600 font-semibold">No entregada</span>
+                    )}
+                  </div>
+
+                  {/* Archivos entregados */}
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-3 text-lg">Archivos entregados</h3>
+                    {reviewData.assignments[0].files && reviewData.assignments[0].files.length > 0 ? (
+                      <ul className="space-y-3 bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
+                        {reviewData.assignments[0].files.map((file, idx) => (
+                          <li key={file.url} className="flex items-center gap-3">
+                            <a 
+                              href={file.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-blue-600 hover:underline flex items-center gap-2"
+                            >
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                className="h-5 w-5" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                              >
+                                <path 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round" 
+                                  strokeWidth={2} 
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                                />
+                              </svg>
+                              <span className="truncate max-w-xs">{file.name || 'Archivo'}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-gray-500 italic bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
+                        No hay archivos entregados
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Evaluación */}
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-3 text-lg">Evaluación</h3>
+                    {reviewData.assignments[0] && reviewData.assignments[0].evaluation_methodology ? (
+                      <EvaluationToolViewer
+                        methodology={{
+                          type: reviewData.assignments[0].type,
+                          methodology: reviewData.assignments[0].evaluation_methodology
+                        }}
+                        onScoreChange={handleReviewScoreChange}
+                        onEvaluationChange={handleReviewEvaluationChange}
+                      />
+                    ) : (
+                      <div className="text-gray-500 italic">
+                        No hay herramienta de evaluación definida
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nota y comentario */}
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block font-semibold mb-2">Nota Final</label>
+                      <input
+                        type="number"
+                        className="w-24 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
+                        value={
+                          reviewData.assignments[0].qualification && reviewData.assignments[0].qualification.trim() !== ""
+                            ? Number(reviewData.assignments[0].qualification.trim())
+                            : ""
+                        }
+                        readOnly
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold mb-2">Comentario</label>
+                      <textarea
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white min-h-[100px]"
+                        placeholder="Escribe tus comentarios aquí..."
+                        value={reviewData.assignments[0].comment || ''}
+                        onChange={e => {
+                          if (e.target.value.length <= 300) {
+                            setReviewData(prev => ({ 
+                              ...prev, 
+                              assignments: [{ 
+                                ...prev.assignments[0], 
+                                comment: e.target.value 
+                              }] 
+                            }));
+                          }
+                        }}
+                        maxLength={300}
+                      />
+                      <div className="text-right text-sm text-gray-500 mt-1">
+                        {reviewData.assignments[0].comment?.length || 0}/300 caracteres
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center text-gray-500 py-10">
+                  No se encontró información de la entrega
+                </div>
+              )}
+            </div>
+
+            {/* Footer fijo */}
+            <div className="p-6 sticky bottom-0 bg-white dark:bg-gray-800 z-10 border-t dark:border-gray-700 flex justify-end">
+              <button
+                onClick={handleSaveReview}
+                disabled={reviewSaving}
+                className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center gap-2"
+              >
+                {reviewSaving ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Guardando...
+                  </>
+                ) : (
+                  'Guardar Calificación'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
-} 
+}
