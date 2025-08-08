@@ -53,11 +53,11 @@ export const getStudentsRudeOrCi = async (studentData) => {
   try{
     const { url, config } = httpRequestFactory.createRequest('/tutor-student/students/rude_ci', 'POST', studentData);
     const response = await fetch(url, config);
-    if (!response.ok) throw new Error('Error al obtener la información del estudiante');
+    if (!response.ok) throw new Error('Los datos de estudiante no son correctos o no existen, Revise nuevamente antes de enviar');
     return await response.json();
   }
   catch (error) {
-    console.error('Error al obtener la información del estudiante:', error);
+    console.error('Los datos de estudiante no son correctos o no existen, Revise nuevamente antes de enviar', error);
     throw error;
   }
 };

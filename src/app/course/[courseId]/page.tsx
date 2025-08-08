@@ -113,12 +113,12 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
     if (!professor || !subject) return;
 
     if (professor.is_tecnical === 1 && subject.is_tecnical === 0) {
-      Swal.fire('Error', 'Los profesores técnicos solo pueden enseñar materias técnicas', 'error');
+      Swal.fire('Advertencia', 'Este profesor no está calificado para materias regulares.', 'error');
       return;
     }
 
     if (professor.is_tecnical === 0 && subject.is_tecnical === 1) {
-      Swal.fire('Error', 'Los profesores regulares no pueden enseñar materias técnicas', 'error');
+      Swal.fire('Advertencia', 'Este profesor no está calificado para materias técnicas.', 'error');
       return;
     }
 
@@ -174,10 +174,10 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
       assignments.some(a => a.subject_id === curriculum.subject_id)
     );
   
-    if (!allSubjectsAssigned) {
+    /*if (!allSubjectsAssigned) {
       Swal.fire('Error', 'Debes asignar un profesor a todas las materias antes de guardar.', 'error');
       return;
-    }
+    }*/
     try {
       const isUpdate = existingAssignments.length > 0;
   

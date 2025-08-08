@@ -30,11 +30,11 @@ const Hero = () => {
             <div className="w-full md:w-1/2 px-4">
               <div className="flex justify-center md:justify-center">
                 <Image
-                  src="/images/hero/main_hero.png"
+                  src="/images/hero/experiments.svg"
                   alt="Edu_Flujo"
                   width={500} 
                   height={500} 
-                  className="rounded-full object-cover" 
+                  className="object-cover" 
                 />
               </div>
             </div>
