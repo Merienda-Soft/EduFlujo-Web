@@ -1,4 +1,5 @@
 import { httpRequestFactory } from './HttpRequestFactory';
+import {EvaluationToolType} from '../types/evaluation'
 
 export const getProfessorByEmail = async (email) => {
     try {
@@ -36,41 +37,50 @@ export const getActivities = async (materiaId: string, cursoId: string, teacherI
     }
 };
 
-export const createActivity = async (activityData) => {
-    try {
-        const { url, config } = httpRequestFactory.createRequest('/tasks', 'POST', activityData);
-        const response = await fetch(url, config);
-        
-        if (!response.ok) {
-            throw new Error(`Error al crear la actividad: ${response.status}`);
-        }
+export const createActivity = async (data: {
+  task: any;
+  tool?: {
+    type: EvaluationToolType;
+    methodology: any;
+  } | null;
+}) => {
+  const { url, config } = httpRequestFactory.createRequest('/tasks', 'POST', data);
+  const response = await fetch(url, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Error al crear la tarea');
+  }
 
-        return await response.json();
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+  return await response.json();
 };
 
-export const updateActivity = async (activityId, activityData) => {
-    try {
-        const { url, config } = httpRequestFactory.createRequest(
-            `/tasks/${activityId}`,
-            'PUT',
-            activityData
-        );
+export const updateActivity = async (activityId: number, data: {
+  task: any;
+  tool?: {
+    type: EvaluationToolType;
+    methodology: any;
+  } | null;
+}) => {
+  try {
+    const { url, config } = httpRequestFactory.createRequest(
+      `/tasks/${activityId}`,
+      'PUT',
+      data
+    );
 
-        const response = await fetch(url, config);
-        
-        if (!response.ok) {
-            throw new Error(`Error al actualizar las calificaciones: ${response.status}`);
-        }
-
-        return response;
-    } catch (error) {
-        console.error(error);
-        throw error;
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al actualizar la actividad');
     }
+
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 };
 
 export const deleteActivity = async (idActivity: string) => {
@@ -93,6 +103,7 @@ export const getActivityByIdWithAssignments = async (idActivity) => {
     try {
         const { url, config } = httpRequestFactory.createRequest(`/tasks/${idActivity}/assignments`);
         const response = await fetch(url, config);
+        console.log(response)
         if (!response.ok) throw new Error('Error al obtener la tarea con asignaciones');
         return await response.json();
     } catch (error) {

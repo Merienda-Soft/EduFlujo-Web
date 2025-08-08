@@ -10,6 +10,10 @@ import { getManagementGlobal, subscribe } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
 import { createNotification } from '../../../../utils/notificationService';
 import { httpRequestFactory } from '../../../../utils/HttpRequestFactory';
+import {EvaluationToolType, RubricData, ChecklistData} from '../../../../types/evaluation';
+import EvaluationToolSelector from '../../../../components/Task/Evaluation/EvaluationToolSelector';
+import ChecklistBuilder from '../../../../components/Task/Evaluation/ChecklistBuilder';
+import RubricBuilder from '../../../../components/Task/Evaluation/RubricBuilder';
 
 // Task filters
 const TASK_FILTERS = {
@@ -49,9 +53,14 @@ export default function TasksPage() {
     ponderacion: '',
     descripcion: '',
     tipo: '1',
-    type: 0, // 0 = tarea para entregar, 1 = tarea solo para calificar
-    isPastTask: false // Nueva opción para tareas pasadas
+    type: 0,
+    isPastTask: false
   });
+  
+  const [evaluationTool, setEvaluationTool] = useState<{
+    type: EvaluationToolType | null;
+    data: RubricData | ChecklistData | null;
+  }>({ type: null, data: null });
 
   // Estado para edición
   const [editTask, setEditTask] = useState(null);
@@ -65,9 +74,134 @@ export default function TasksPage() {
     { value: '5', text: 'Autoevaluación' },
   ];
 
-  // Extract courseId from query string robustly
   const courseIdRaw = searchParams?.get('courseId');
   const courseId = courseIdRaw && !isNaN(Number(courseIdRaw)) ? Number(courseIdRaw) : null;
+
+  // Función para mapear los datos de evaluación desde el backend al frontend
+  const mapEvaluationToolFromBackend = (backendData) => {
+    if (!backendData || !backendData.evaluationTool) {
+      return { type: null, data: null };
+    }
+
+    const { type, methodology } = backendData.evaluationTool;
+
+    // Mapear tipo de herramienta
+    let mappedType = null;
+    if (type === 1) {
+      mappedType = EvaluationToolType.RUBRIC;
+    } else if (type === 2) {
+      mappedType = EvaluationToolType.CHECKLIST;
+    }
+
+    // Si no hay metodología, retornar datos por defecto
+    if (!methodology) {
+      return {
+        type: mappedType,
+        data: mappedType === EvaluationToolType.RUBRIC 
+          ? { title: 'Rúbrica de Evaluación', criteria: [] }
+          : { title: 'Lista de Cotejo', items: [] }
+      };
+    }
+
+    let mappedData = null;
+    try {
+      const methodologyData = typeof methodology === 'string' 
+        ? JSON.parse(methodology) 
+        : methodology;
+
+      if (mappedType === EvaluationToolType.RUBRIC) {
+        if (methodologyData.criteria && Array.isArray(methodologyData.criteria)) {
+          mappedData = {
+            title: methodologyData.title || 'Rúbrica de Evaluación',
+            criteria: methodologyData.criteria.map(criterion => ({
+              name: criterion.name || '',
+              weight: criterion.weight || 0,
+              levels: criterion.levels && Array.isArray(criterion.levels) 
+                ? criterion.levels.map(level => ({
+                    description: level.description || '',
+                    score: level.score || 0
+                  }))
+                : [
+                    { description: 'Excelente', score: 5 },
+                    { description: 'Bueno', score: 3 },
+                    { description: 'Regular', score: 1 }
+                  ]
+            }))
+          };
+        }
+      } else if (mappedType === EvaluationToolType.CHECKLIST) {
+        if (methodologyData.items && Array.isArray(methodologyData.items)) {
+          mappedData = {
+            title: methodologyData.title || 'Lista de Cotejo',
+            items: methodologyData.items.map(item => ({
+              description: item.description || '',
+              required: item.required !== undefined ? item.required : true
+            }))
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing evaluation methodology:', error);
+    }
+
+    if (!mappedData) {
+      mappedData = mappedType === EvaluationToolType.RUBRIC 
+        ? { title: 'Rúbrica de Evaluación', criteria: [] }
+        : { title: 'Lista de Cotejo', items: [] };
+    }
+
+    return { type: mappedType, data: mappedData };
+  };
+
+  // Función para resetear el formulario
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      date: '',
+      startDate: '',
+      ponderacion: '',
+      descripcion: '',
+      tipo: '1',
+      type: 0,
+      isPastTask: false
+    });
+    setEvaluationTool({ type: null, data: null });
+  };
+
+  const openEditModal = (task) => {
+    console.log('Abriendo modal de edición con task:', task);
+    
+    const startDate = new Date(task.startDate);
+    const endDate = new Date(task.endDate);
+    const isPastTask = startDate < new Date();
+
+    setFormData({
+      name: task.name || '',
+      date: task.endDate ? task.endDate.slice(0, 10) : '',
+      startDate: task.startDate ? task.startDate.slice(0, 10) : '',
+      ponderacion: String(task.weight || 0),
+      descripcion: task.description || '',
+      tipo: String(task.dimension_id || '1'),
+      type: task.type || 0,
+      isPastTask: isPastTask
+    });
+
+    // Mapear herramienta de evaluación
+    const mappedEvaluationTool = mapEvaluationToolFromBackend(task);
+    console.log('Herramienta de evaluación mapeada:', mappedEvaluationTool);
+    
+    setEvaluationTool(mappedEvaluationTool);
+    setEditTask(task);
+    setFormError('');
+    setShowCreateModal(true);
+  };
+
+  const closeModal = () => {
+    setShowCreateModal(false);
+    setEditTask(null);
+    setFormError('');
+    resetForm();
+  };
 
   // Suscribirse a cambios en la gestión
   useEffect(() => {
@@ -243,11 +377,32 @@ export default function TasksPage() {
       }
     }
 
+    if (formData.type === 1) {
+      if (!evaluationTool.type) {
+        setFormError('Seleccione una herramienta de evaluación');
+        return false;
+      }
+
+      if (evaluationTool.type === EvaluationToolType.RUBRIC) {
+        const rubric = evaluationTool.data as RubricData;
+        if (rubric.criteria.length === 0) {
+          setFormError('La rúbrica debe tener al menos un criterio');
+          return false;
+        }
+      } else if (evaluationTool.type === EvaluationToolType.CHECKLIST) {
+        const checklist = evaluationTool.data as ChecklistData;
+        if (checklist.items.length === 0) {
+          setFormError('La lista de cotejo debe tener al menos un ítem');
+          return false;
+        }
+      }
+    }
+
     setFormError('');
     return true;
   };
 
-  // Función para recargar tareas desde el backend (con pequeño delay si es necesario)
+  // Función para recargar tareas desde el backend
   const fetchTasks = async (professorId, subjectId, courseId, retry = 0) => {
     try {
       const activities = await getActivities(
@@ -258,7 +413,6 @@ export default function TasksPage() {
       );
       const normalized = activities.map(normalizeTask);
       setTasks(normalized);
-      // Si acabamos de crear/editar y la tarea no aparece, reintenta una vez después de 500ms
       if (retry < 1 && editTask === null && showCreateModal === false && formData.name && !normalized.some(t => t.name === formData.name)) {
         setTimeout(() => fetchTasks(professorId, subjectId, courseId, retry + 1), 500);
       }
@@ -271,55 +425,27 @@ export default function TasksPage() {
     }
   };
 
-  // MODAL: Crear/Editar tarea
   const isEditing = !!editTask;
   const modalTitle = isEditing ? 'Editar Tarea' : 'Nueva Tarea';
   const modalButton = isEditing ? (updating ? 'Actualizando...' : 'Actualizar Tarea') : (creating ? 'Creando...' : 'Crear Tarea');
 
-  const openEditModal = (task) => {
-    const startDate = new Date(task.startDate);
-    const endDate = new Date(task.endDate);
-    const isPastTask = startDate < new Date();
-    
-    setEditTask(task);
-    setFormData({
-      name: task.name,
-      date: task.endDate ? task.endDate.slice(0, 10) : '',
-      startDate: task.startDate ? task.startDate.slice(0, 10) : '',
-      ponderacion: String(task.weight),
-      descripcion: task.description,
-      tipo: String(task.dimension_id),
-      type: task.type,
-      isPastTask: isPastTask
-    });
-    setShowCreateModal(true);
-  };
-
-  const closeModal = () => {
-    setShowCreateModal(false);
-    setEditTask(null);
-    setFormError('');
-    setFormData({
-      name: '',
-      date: '',
-      startDate: '',
-      ponderacion: '',
-      descripcion: '',
-      tipo: '1',
-      type: 0,
-      isPastTask: false
-    });
-  };
-
   const handleCreateOrUpdateTask = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    if (formData.type === 1 && !evaluationTool.type) {
+      setFormError('Seleccione una herramienta de evaluación');
+      return;
+    }
+    
     if (isEditing) {
       setUpdating(true);
     } else {
       setCreating(true);
     }
+    
     setFormError('');
+    
     try {
       const now = new Date();
       const startDate = formData.isPastTask ? formData.startDate : now.toISOString();
@@ -328,8 +454,8 @@ export default function TasksPage() {
       const endDateISO = endDate.toISOString();
 
       if (isEditing) {
-        // UPDATE
         const updatePayload = {
+          task: {
             id: editTask.id,
             name: formData.name,
             description: formData.descripcion,
@@ -343,8 +469,19 @@ export default function TasksPage() {
             quarter: 'Q1',
             start_date: formData.isPastTask ? formData.startDate : editTask.startDate,
             end_date: endDateISO
+          }
         };
-        await updateActivity(editTask.id, updatePayload);
+        
+        const update_payload = {
+          task: updatePayload,
+          tool: evaluationTool.type ? {
+            type: evaluationTool.type,
+            methodology: evaluationTool.data
+          } : null
+        };
+
+        await updateActivity(editTask.id, update_payload);
+        
         Swal.fire({
           icon: 'success',
           title: 'Tarea actualizada',
@@ -353,25 +490,31 @@ export default function TasksPage() {
           showConfirmButton: false
         });
       } else {
-        // CREATE
-        const newTask = {
-          task: {
-            name: formData.name,
-            description: formData.descripcion,
-            dimension_id: Number(formData.tipo),
-            management_id: Number(selectedManagement),
-            professor_id: Number(professor.id),
-            subject_id: Number(params.subjectId),
-            course_id: courseId,
-            weight: Number(formData.ponderacion),
-            is_autoevaluation: 0,
-            quarter: 'Q1',
-            type: formData.type,
-            start_date: startDate,
-            end_date: endDateISO
-          }
+        const taskPayload = {
+          name: formData.name,
+          description: formData.descripcion,
+          dimension_id: Number(formData.tipo),
+          management_id: Number(selectedManagement),
+          professor_id: Number(professor.id),
+          subject_id: Number(params.subjectId),
+          course_id: courseId,
+          weight: Number(formData.ponderacion),
+          is_autoevaluation: 0,
+          quarter: 'Q1',
+          type: formData.type,
+          start_date: startDate,
+          end_date: endDateISO
         };
-        const createdTask = await createActivity(newTask);
+
+        const payload = {
+          task: taskPayload,
+          tool: evaluationTool.type ? {
+            type: evaluationTool.type,
+            methodology: evaluationTool.data
+          } : null
+        };
+
+        const createdTask = await createActivity(payload);
 
         Swal.fire({
           icon: 'success',
@@ -381,6 +524,7 @@ export default function TasksPage() {
           showConfirmButton: false
         });
       }
+      
       closeModal();
       await fetchTasks(professor.id, params.subjectId, courseId);
     } catch (error) {
@@ -435,7 +579,10 @@ export default function TasksPage() {
     endDate: task.end_date,
     dimension: task.dimension?.dimension || '',
     subject: task.subject?.subject || '',
-    // ...otros campos que uses en el render
+    evaluationTool: task.assignments?.[0] ? {
+      type: task.assignments[0].type,
+      methodology: task.assignments[0].evaluation_methodology
+    } : null
   });
 
   // Función para determinar el estado de la tarea
@@ -445,11 +592,11 @@ export default function TasksPage() {
     if (endDate > now && task.type !== 1) return 'Creada';
     return 'Para Revisar';
   };
+  
   const getTaskStatusColor = (status) => {
     return status === 'Creada' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
   };
 
-  // Proteger el render hasta que currentDate esté definido
   if (!currentDate) return null;
 
   return (
@@ -495,116 +642,218 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Modal para crear tarea */}
+      {/* Modal para crear o editar tarea */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm animate-fadeIn">
-          <form onSubmit={handleCreateOrUpdateTask} className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-lg relative animate-fadeIn">
-            <button type="button" onClick={closeModal} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl font-bold focus:outline-none">×</button>
-            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{modalTitle}</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre de la Tarea *</label>
-              <input type="text" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.name} onChange={e => handleInputChange('name', e.target.value)} required maxLength={100} />
-            </div>
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="checkbox"
-                  id="past-task"
-                  checked={formData.isPastTask}
-                  onChange={(e) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      isPastTask: e.target.checked,
-                      startDate: e.target.checked ? prev.startDate : '',
-                      date: e.target.checked ? prev.date : ''
-                    }));
-                  }}
-                  className="form-checkbox h-5 w-5 text-blue-600"
-                />
-                <label htmlFor="past-task" className="text-sm text-gray-700 dark:text-gray-300">
-                  Crear tarea pasada
-                </label>
-              </div>
-              {formData.isPastTask ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Inicio *</label>
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      value={formData.startDate}
-                      onChange={e => handleInputChange('startDate', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Fin *</label>
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      value={formData.date}
-                      onChange={e => handleInputChange('date', e.target.value)}
-                      required
-                    />
-                  </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-2xl h-[700px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <form 
+              onSubmit={handleCreateOrUpdateTask} 
+              className="flex-1 flex flex-col overflow-hidden"
+            >
+              {/* Cabecera sticky */}
+              <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-start">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {modalTitle}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="text-gray-400 hover:text-red-500 text-2xl font-bold focus:outline-none"
+                  >
+                    ×
+                  </button>
                 </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Entrega *</label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    value={formData.date}
-                    onChange={e => handleInputChange('date', e.target.value)}
-                    required
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre de la Tarea *</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                    value={formData.name} 
+                    onChange={e => handleInputChange('name', e.target.value)} 
+                    required 
+                    maxLength={100} 
                   />
                 </div>
-              )}
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Ponderación (%) *</label>
-              <input 
-                type="number" 
-                min={1} 
-                max={100} 
-                step={1}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                value={formData.ponderacion} 
-                onChange={e => {
-                  const value = e.target.value;
-                  if (value === '' || (Number(value) >= 1 && Number(value) <= 100)) {
-                    handleInputChange('ponderacion', value);
-                  }
-                }} 
-                onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                required 
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Área de Evaluación *</label>
-              <select className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.tipo} onChange={e => handleInputChange('tipo', e.target.value)} required>
-                {DIMENSION_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.text}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Descripción *</label>
-              <textarea className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={formData.descripcion} onChange={e => handleInputChange('descripcion', e.target.value)} rows={3} required maxLength={500} />
-            </div>
-            <div className="mb-6 flex items-center gap-2">
-              <input type="checkbox" id="only-grade" checked={formData.type === 1} onChange={handleCheckboxToggle} className="form-checkbox h-5 w-5 text-blue-600" />
-              <label htmlFor="only-grade" className="text-sm text-gray-700 dark:text-gray-300">Tarea solo para calificar (sin entrega de alumnos)</label>
-            </div>
-            {formError && <div className="mb-4 text-red-500 text-sm font-medium">{formError}</div>}
-            <button type="submit" disabled={creating || updating} className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg transition disabled:opacity-60 disabled:cursor-not-allowed">
-              {modalButton}
-            </button>
-          </form>
+
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="past-task"
+                      checked={formData.isPastTask}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          isPastTask: e.target.checked,
+                          startDate: e.target.checked ? prev.startDate : '',
+                          date: e.target.checked ? prev.date : ''
+                        }));
+                      }}
+                      className="form-checkbox h-5 w-5 text-blue-600"
+                    />
+                    <label htmlFor="past-task" className="text-sm text-gray-700 dark:text-gray-300">
+                      Crear tarea pasada
+                    </label>
+                  </div>
+                  {formData.isPastTask ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Inicio *</label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          value={formData.startDate}
+                          onChange={e => handleInputChange('startDate', e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Fin *</label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          value={formData.date}
+                          onChange={e => handleInputChange('date', e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Fecha de Entrega *</label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        value={formData.date}
+                        onChange={e => handleInputChange('date', e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Ponderación (%) *</label>
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={100} 
+                    step={1}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                    value={formData.ponderacion} 
+                    onChange={e => {
+                      const value = e.target.value;
+                      if (value === '' || (Number(value) >= 1 && Number(value) <= 100)) {
+                        handleInputChange('ponderacion', value);
+                      }
+                    }} 
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    required 
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Área de Evaluación *</label>
+                  <select 
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                    value={formData.tipo} 
+                    onChange={e => handleInputChange('tipo', e.target.value)} 
+                    required
+                  >
+                    {DIMENSION_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.text}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Descripción *</label>
+                  <textarea 
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                    value={formData.descripcion} 
+                    onChange={e => handleInputChange('descripcion', e.target.value)} 
+                    rows={3} 
+                    required 
+                    maxLength={500} 
+                  />
+                </div>
+
+                <div className="mb-6 border-t pt-4">
+                  <h3 className="font-bold mb-3 text-lg">Herramienta de Evaluación</h3>
+                  
+                  <EvaluationToolSelector 
+                    selectedType={evaluationTool.type} 
+                    onChange={(type) => {
+                      if (type !== evaluationTool.type) {
+                        setEvaluationTool({
+                          type,
+                          data: type === EvaluationToolType.RUBRIC 
+                            ? { title: 'Rúbrica de Evaluación', criteria: [] }
+                            : { title: 'Lista de Cotejo', items: [] }
+                        });
+                      }
+                    }} 
+                  />
+
+                  {evaluationTool.type === EvaluationToolType.RUBRIC && (
+                    <div className="mt-4">
+                      <RubricBuilder 
+                        key={`rubric-${isEditing ? editTask?.id : 'new'}`}
+                        initialData={evaluationTool.data as RubricData}
+                        onChange={(data) => setEvaluationTool(prev => ({ ...prev, data }))}
+                      />
+                    </div>
+                  )}
+
+                  {evaluationTool.type === EvaluationToolType.CHECKLIST && (
+                    <div className="mt-4">
+                      <ChecklistBuilder 
+                        key={`checklist-${isEditing ? editTask?.id : 'new'}`}
+                        initialData={evaluationTool.data as ChecklistData}
+                        onChange={(data) => setEvaluationTool(prev => ({ ...prev, data }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer sticky */}
+              <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+                <div className="mb-6 flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="only-grade" 
+                    checked={formData.type === 1} 
+                    onChange={handleCheckboxToggle} 
+                    className="form-checkbox h-5 w-5 text-blue-600" 
+                  />
+                  <label htmlFor="only-grade" className="text-sm text-gray-700 dark:text-gray-300">
+                    Tarea solo para calificar (sin entrega de alumnos)
+                  </label>
+                </div>
+                
+                {formError && (
+                  <div className="mb-4 text-red-500 text-sm font-medium">{formError}</div>
+                )}
+                
+                <button 
+                  type="submit" 
+                  disabled={creating || updating} 
+                  className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {modalButton}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -675,7 +924,9 @@ export default function TasksPage() {
           <div className="text-red-500 text-center py-16 text-lg font-semibold">{error}</div>
         ) : (filteredTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 opacity-80">
-            <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mb-4 text-gray-400 dark:text-gray-600"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6 4h6a2 2 0 002-2v-5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5a2 2 0 002 2z" /></svg>
+            <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mb-4 text-gray-400 dark:text-gray-600">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6 4h6a2 2 0 002-2v-5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5a2 2 0 002 2z" />
+            </svg>
             <p className="text-xl text-gray-500 dark:text-gray-400 font-semibold">No hay tareas para este mes</p>
             <p className="text-base text-gray-400 dark:text-gray-500">¡Crea tu primera tarea para este curso!</p>
           </div>
@@ -700,9 +951,13 @@ export default function TasksPage() {
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                         {task.name}
                       </h3>
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${getTaskStatusColor(status)}`}>{status}</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${getTaskStatusColor(status)}`}>
+                        {status}
+                      </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 mb-3 line-clamp-3 min-h-[48px]">{task.description}</p>
+                    <p className="text-gray-600 dark:text-gray-300 mb-3 line-clamp-3 min-h-[48px]">
+                      {task.description}
+                    </p>
                     <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
                       <div className="flex items-center gap-1">
                         <CalendarIcon className="h-4 w-4" />
@@ -756,15 +1011,41 @@ export default function TasksPage() {
           </div>
         ))}
       </div>
+
       <style jsx global>{`
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease;
-}
-`}</style>
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease;
+        }
+        .evaluation-builder {
+          border: 1px solid #e2e8f0;
+          border-radius: 0.5rem;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          background-color: #f8fafc;
+        }
+        
+        .evaluation-builder.dark {
+          background-color: #1e293b;
+          border-color: #334155;
+        }
+        
+        .criteria-item, .checklist-item {
+          background-color: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 0.5rem;
+          padding: 1rem;
+          margin-bottom: 1rem;
+        }
+        
+        .dark .criteria-item, .dark .checklist-item {
+          background-color: #1e293b;
+          border-color: #334155;
+        }
+      `}</style>
     </div>
   );
-} 
+}
