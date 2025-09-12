@@ -1,4 +1,5 @@
 import { httpRequestFactory } from './HttpRequestFactory';
+import { getCurrentUserId } from './globalState';
 
 export interface SupportMaterialFile {
   name: string;
@@ -13,10 +14,18 @@ export interface SupportMaterial {
 
 export const uploadSupportMaterial = async (courseId: number, subjectId: number, managementId: number, fileData: SupportMaterialFile) => {
   try {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
     const { url, config } = httpRequestFactory.createRequest(
       `/content/${courseId}/${subjectId}/${managementId}`,
       'POST',
-      { file: fileData }
+      { 
+        file: fileData,
+        created_by: currentUserId
+      }
     );
     const response = await fetch(url, config);
     const responseText = await response.text();
@@ -44,9 +53,15 @@ export const getSupportMaterials = async (courseId: number, subjectId: number, m
 
 export const deleteSupportMaterial = async (id: number) => {
   try {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
     const { url, config } = httpRequestFactory.createRequest(
       `/content/${id}`,
-      'DELETE'
+      'DELETE',
+      { deleted_by: currentUserId }
     );
     const response = await fetch(url, config);
     const responseText = await response.text();

@@ -1,8 +1,17 @@
 import { httpRequestFactory } from './HttpRequestFactory';
+import { getCurrentUserId } from './globalState';
 
 export const createNotification = async (notificationData) => {
     try {
-        const { url, config } = httpRequestFactory.createRequest('/notifications', 'POST', notificationData);
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            throw new Error('Usuario no autenticado');
+        }
+        
+        const { url, config } = httpRequestFactory.createRequest('/notifications', 'POST', {
+            ...notificationData,
+            created_by: currentUserId
+        });
         const response = await fetch(url, config);
         
         if (!response.ok) {
@@ -50,10 +59,18 @@ export const getUnreadNotificationsCount = async (personId: string) => {
 
 export const updateNotificationStatus = async (notificationId: string, status: number) => {
     try {
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            throw new Error('Usuario no autenticado');
+        }
+        
         const { url, config } = httpRequestFactory.createRequest(
-            `/notifications/${notificationId}`,
+            `/notifications/${notificationId}/status`,
             'PUT',
-            { status }
+            { 
+                status,
+                updated_by: currentUserId
+            }
         );
         const response = await fetch(url, config);
         

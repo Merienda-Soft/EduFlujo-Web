@@ -1,5 +1,6 @@
 import { httpRequestFactory } from './HttpRequestFactory';
-import {EvaluationToolType} from '../types/evaluation'
+import {EvaluationToolType} from '../types/evaluation';
+import { getCurrentUserId } from './globalState';
 
 export const getProfessorByEmail = async (email) => {
     try {
@@ -44,7 +45,18 @@ export const createActivity = async (data: {
     methodology: any;
   } | null;
 }) => {
-  const { url, config } = httpRequestFactory.createRequest('/tasks', 'POST', data);
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId) {
+    throw new Error('Usuario no autenticado');
+  }
+  
+  const { url, config } = httpRequestFactory.createRequest('/tasks', 'POST', {
+    ...data,
+    task: {
+      ...data.task,
+      created_by: currentUserId
+    }
+  });
   const response = await fetch(url, config);
   
   if (!response.ok) {
@@ -63,10 +75,21 @@ export const updateActivity = async (activityId: number, data: {
   } | null;
 }) => {
   try {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
     const { url, config } = httpRequestFactory.createRequest(
       `/tasks/${activityId}`,
       'PUT',
-      data
+      {
+        ...data,
+        task: {
+          ...data.task,
+          updated_by: currentUserId
+        }
+      }
     );
 
     const response = await fetch(url, config);
@@ -85,7 +108,14 @@ export const updateActivity = async (activityId: number, data: {
 
 export const deleteActivity = async (idActivity: string) => {
     try {
-        const { url, config } = httpRequestFactory.createRequest(`/tasks/delete/${idActivity}`, 'POST');
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            throw new Error('Usuario no autenticado');
+        }
+        
+        const { url, config } = httpRequestFactory.createRequest(`/tasks/delete/${idActivity}`, 'POST', {
+            deleted_by: currentUserId
+        });
         const response = await fetch(url, config);
         
         if (!response.ok) {
@@ -140,6 +170,7 @@ export const getTaskByIdWithAssignmentsForStudent = async (taskId: string, stude
 };
 
 export const getTasksByStudentId = async (studentId: string, courseId: string, subjectId: string, managementId: string) => {
+    console.log('getTasksByStudentId');
     try {
         const { url, config } = httpRequestFactory.createRequest(
             `/tasks/student/${studentId}/course/${courseId}/subject/${subjectId}/management/${managementId}`
@@ -153,6 +184,7 @@ export const getTasksByStudentId = async (studentId: string, courseId: string, s
         if (!response.ok) {
             throw new Error(`Error al obtener las tareas: ${response.status}`);
         }
+        console.log("JSON: ", response)
 
         return await response.json();
     } catch (error) {

@@ -1,4 +1,5 @@
 import { httpRequestFactory } from './HttpRequestFactory';
+import { getCurrentUserId } from './globalState';
 
 // PROFESORES
 
@@ -40,7 +41,15 @@ export const getProfesorByEmail = async (email: string) => {
 
 export const createProfesor = async (profesorData: any) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/professors', 'POST', profesorData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest('/professors', 'POST', {
+      ...profesorData,
+      created_by: currentUserId
+    });
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al crear el profesor');
     return await response.json();
@@ -52,7 +61,15 @@ export const createProfesor = async (profesorData: any) => {
 
 export const updateProfesor = async (id: string, profesorData: any) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`, 'PUT', profesorData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`, 'PUT', {
+      ...profesorData,
+      updated_by: currentUserId
+    });
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al actualizar el profesor');
     return await response.json();
@@ -64,7 +81,14 @@ export const updateProfesor = async (id: string, profesorData: any) => {
 
 export const deleteProfesor = async (id: string) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`, 'DELETE');
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest(`/teachers/${id}`, 'DELETE', {
+      deleted_by: currentUserId
+    });
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error al eliminar el profesor');
     return await response.json();
@@ -100,11 +124,21 @@ export const getAsignacionesByCurso = async (cursoId: number) => {
   }
 };
 
-export const createAsignacion = async (asignacionData: any) => {
+export const createAsignacion = async (asignacionData: any[]) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/assignment', 'POST', asignacionData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const assignmentsWithAudit = asignacionData.map(assignment => ({
+      ...assignment,
+      created_by: currentUserId
+    }));
+    
+    const { url, config } = httpRequestFactory.createRequest('/assignment', 'POST', assignmentsWithAudit);
     const response = await fetch(url, config);
-    if (!response.ok) throw new Error('Error al crear la asignación');
+    if (!response.ok) throw new Error('Error al crear las asignaciones');
     return await response.json();
   } catch (error) {
     console.error(error);
@@ -112,11 +146,21 @@ export const createAsignacion = async (asignacionData: any) => {
   }
 };
 
-export const updateAsignacion = async (asignacionData: any) => {
+export const updateAsignacion = async (updates: any[]) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/assignment`, 'PUT', asignacionData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const updateData = {
+      updates: updates,
+      updated_by: currentUserId
+    };
+    
+    const { url, config } = httpRequestFactory.createRequest(`/assignment`, 'PUT', updateData);
     const response = await fetch(url, config);
-    if (!response.ok) throw new Error('Error al actualizar la asignación');
+    if (!response.ok) throw new Error('Error al actualizar las asignaciones');
     return await response.json();
   } catch (error) {
     console.error(error);

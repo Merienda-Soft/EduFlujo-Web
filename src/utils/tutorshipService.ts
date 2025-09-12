@@ -1,5 +1,6 @@
 import { httpRequestFactory } from './HttpRequestFactory';
 import axios from 'axios';
+import { getCurrentUserId } from './globalState';
 
 const SERVICE_URL = process.env.NEXT_PUBLIC_SERVICE_URL;
 
@@ -38,7 +39,15 @@ export const getTutorShipByStatus = async (value: number) => {
 export const createTutorWithTutorship = async (tutorshipData) => {
     console.log('Tutorship data:', tutorshipData); 
     try {
-      const { url, config } = httpRequestFactory.createRequest('/tutor-student/tutorship', 'POST', tutorshipData);
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) {
+        throw new Error('Usuario no autenticado');
+      }
+      
+      const { url, config } = httpRequestFactory.createRequest('/tutor-student/tutorship', 'POST', {
+        ...tutorshipData,
+        created_by: currentUserId
+      });
       const response = await fetch(url, config);
       const responseData = await response.json(); 
       if (!response.ok) throw new Error(responseData.error);
@@ -64,7 +73,15 @@ export const getStudentsRudeOrCi = async (studentData) => {
 
 export const createTutor = async (tutorshipData) => {
     try {
-      const { url, config } = httpRequestFactory.createRequest('/tutor-student', 'POST', tutorshipData);
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) {
+        throw new Error('Usuario no autenticado');
+      }
+      
+      const { url, config } = httpRequestFactory.createRequest('/tutor-student', 'POST', {
+        ...tutorshipData,
+        created_by: currentUserId
+      });
       const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al crear la inscripción');
        return await response.json();
@@ -76,7 +93,15 @@ export const createTutor = async (tutorshipData) => {
 
 export const createTutorShip = async (tutorshipData) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/tutor-student/request', 'POST', tutorshipData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest('/tutor-student/request', 'POST', {
+      ...tutorshipData,
+      created_by: currentUserId
+    });
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Hubo un error al registrar la tutoria');
      return await response.json();
@@ -88,7 +113,15 @@ export const createTutorShip = async (tutorshipData) => {
 
 export const updateTutor = async (tutorshipData) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/tutor-student', 'PUT', tutorshipData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest('/tutor-student', 'PUT', {
+      ...tutorshipData,
+      updated_by: currentUserId
+    });
     const response = await fetch(url, config);
     if (!response.ok) throw new Error('Error en el proceso de actualización');
      return await response.json();

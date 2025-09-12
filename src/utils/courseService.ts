@@ -1,11 +1,20 @@
 import { httpRequestFactory } from './HttpRequestFactory';
+import { getCurrentUserId } from './globalState';
 
 // CURSOS
 
 export const createCourse = async (courseData) => {
   console.log("CourseData:", courseData);
   try {
-    const { url, config } = httpRequestFactory.createRequest('/course', 'POST', courseData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest('/course', 'POST', {
+      ...courseData,
+      created_by: currentUserId
+    });
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -37,7 +46,15 @@ export const getCourseById = async (id: number) => {
 
 export const updateCourse = async (courseId: number, courseData) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/course/${courseId}`, 'PUT', courseData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest(`/course/${courseId}`, 'PUT', {
+      ...courseData,
+      updated_by: currentUserId
+    });
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -53,7 +70,14 @@ export const updateCourse = async (courseId: number, courseData) => {
 
 export const deleteCourse = async (id: string) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest(`/courses/${id}`, 'DELETE', { __v: 1 });
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest(`/course/${id}`, 'DELETE', {
+      deleted_by: currentUserId
+    });
     const response = await fetch(url, config);
 
     if (!response.ok) {
@@ -89,7 +113,15 @@ export const getMaterias = async () => {
 
 export const createMateria = async (materiaData: { name: string }) => {
   try {
-    const { url, config } = httpRequestFactory.createRequest('/subject', 'POST', materiaData);
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('Usuario no autenticado');
+    }
+    
+    const { url, config } = httpRequestFactory.createRequest('/subject', 'POST', {
+      ...materiaData,
+      created_by: currentUserId
+    });
     const response = await fetch(url, config);
 
     if (!response.ok) {

@@ -1,4 +1,5 @@
 import { httpRequestFactory } from './HttpRequestFactory';
+import { getCurrentUserId } from './globalState';
 
 interface Student {
   student_id: number;
@@ -46,11 +47,19 @@ export const getStudentsByCourse = async (courseId: string) => {
 
 export const registerAttendance = async (attendanceData: AttendanceData, recordsData: { student_id: number; status_attendance: string }[]) => {
     try {
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            throw new Error('Usuario no autenticado');
+        }
+        
         const { url, config } = httpRequestFactory.createRequest(
             '/attendance/register',
             'POST',
             {
-                attendance: attendanceData,
+                attendance: {
+                    ...attendanceData,
+                    created_by: currentUserId
+                },
                 records: recordsData
             }
         );
@@ -81,10 +90,18 @@ export const getAttendanceByCourseSubjectDate = async (courseId: Number, subject
 
 export const updateAttendanceRecord = async (updateData: UpdateAttendanceData) => {
     try {
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            throw new Error('Usuario no autenticado');
+        }
+        
         const { url, config } = httpRequestFactory.createRequest(
             '/attendance/attendance/batch-update',
             'PUT',
-            updateData
+            {
+                ...updateData,
+                updated_by: currentUserId
+            }
         );
         const response = await fetch(url, config);
         if (!response.ok) throw new Error('Error al actualizar la asistencia');

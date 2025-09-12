@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { httpRequestFactory } from './HttpRequestFactory';
+import { getCurrentUserId } from './globalState';
 
 //URL SERVICE PDF
 const SERVICE_URL = process.env.NEXT_PUBLIC_SERVICE_URL;
@@ -52,7 +53,15 @@ export const uploadPdf = async (file) => {
   export const createInscripcion = async (inscripcionData) => {
     console.log('Inscripcion Data:', inscripcionData);
     try {
-      const { url, config } = httpRequestFactory.createRequest('/registration', 'POST', inscripcionData);
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) {
+        throw new Error('Usuario no autenticado');
+      }
+      
+      const { url, config } = httpRequestFactory.createRequest('/registration', 'POST', {
+        ...inscripcionData,
+        created_by: currentUserId
+      });
       const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al crear la inscripción');
        return await response.json();
@@ -66,7 +75,15 @@ export const uploadPdf = async (file) => {
   export const updateInscripcion = async (registrationUpdates) => {
     console.log('registrationUpdates SERVICES:', registrationUpdates); 
     try {
-      const { url, config } = httpRequestFactory.createRequest(`/registration`, 'PUT', registrationUpdates);
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) {
+        throw new Error('Usuario no autenticado');
+      }
+      
+      const { url, config } = httpRequestFactory.createRequest(`/registration`, 'PUT', {
+        ...registrationUpdates,
+        updated_by: currentUserId
+      });
       const response = await fetch(url, config);
       if (!response.ok) throw new Error('Error al actualizar la inscripción');
       return await response.json();
