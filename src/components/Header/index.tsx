@@ -9,7 +9,7 @@ import { useUser } from "@auth0/nextjs-auth0/client";
 import { destroyCookie } from 'nookies';
 import { useUserRoles } from '../../utils/roleUtils';
 import { getUpdatedMenuData, HeaderIcons } from "./menuData";
-import { getManagementGlobal, subscribe, setManagementGlobal, initializeManagement } from '../../utils/globalState';
+import { getManagementGlobal, subscribe, setManagementGlobal, initializeManagement, getUserIdByEmail, clearUserData, resetInitialization } from '../../utils/globalState';
 import UserProfileModal from "../UserManagement/UserProfile";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPencilAlt } from '@fortawesome/free-solid-svg-icons';
@@ -35,17 +35,42 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
-  const init = async () => {
-    await initializeManagement();
-  };
-  init();
+    const init = async () => {
+      // Solo inicializar managements si hay usuario autenticado o si es la primera vez
+      if (!isLoading && (user || getManagementGlobal().allManagements.length === 0)) {
+        await initializeManagement();
+      }
+    };
+    init();
 
-  const unsubscribe = subscribe(() => {
-    setMenuData(getUpdatedMenuData(roles));
-  });
-  
-  return unsubscribe;
-}, [roles]);
+    const unsubscribe = subscribe(() => {
+      setMenuData(getUpdatedMenuData(roles));
+    });
+    
+    return unsubscribe;
+  }, [isLoading, user, roles]);
+
+  // useEffect para manejar la autenticación del usuario
+  useEffect(() => {
+    const handleUserAuth = async () => {
+      // Solo proceder si el estado de carga ha terminado
+      if (isLoading) return;
+      
+      if (user && user.email) {
+        // Usuario autenticado: obtener su ID solo si no lo tenemos
+        try {
+          await getUserIdByEmail(user.email);
+        } catch (error) {
+          console.error('Error inicializando userId:', error);
+        }
+      } else {
+        // Usuario no autenticado: limpiar datos
+        clearUserData();
+      }
+    };
+    
+    handleUserAuth();
+  }, [isLoading, user?.email]); // Solo depender de isLoading y email específico
 
   const navbarToggleHandler = () => setNavbarOpen(!navbarOpen);
   
@@ -54,8 +79,16 @@ const Header = () => {
   };
 
   const handleLogout = () => {
+    // Limpiar datos del usuario del estado global
+    clearUserData();
+    // Resetear el flag de inicialización para permitir nueva inicialización si es necesario
+    resetInitialization();
+    // Limpiar cookies
     destroyCookie(null, 'cookie_name', { path: '/' }); 
     destroyCookie(null, 'another_cookie_name', { path: '/' });
+    // Limpiar cookie de management global
+    destroyCookie(null, 'managementGlobal', { path: '/' });
+    // Redirigir al logout de Auth0
     window.location.href = '/api/auth/logout';
   };
 

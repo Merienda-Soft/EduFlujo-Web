@@ -67,10 +67,11 @@ export default function StudentTasksPage() {
       if (response.ok && response.data) {
         const transformedTasks = response.data.map((task) => ({
           ...task,
-          createDate: new Date(task.create_date),
+          createDate: new Date(task.created_at),
           status: task.assignments?.[0]?.status ?? 0,
         }));
         setTasks(transformedTasks);
+        console.log("Transformed Tasks: ", transformedTasks);
       } else {
         setTasks([]);
       }
