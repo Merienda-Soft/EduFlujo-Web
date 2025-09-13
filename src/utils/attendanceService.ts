@@ -56,11 +56,9 @@ export const registerAttendance = async (attendanceData: AttendanceData, records
             '/attendance/register',
             'POST',
             {
-                attendance: {
-                    ...attendanceData,
-                    created_by: currentUserId
-                },
-                records: recordsData
+                attendance: attendanceData,
+                records: recordsData,
+                created_by: currentUserId  
             }
         );
         console.log(url, config);
