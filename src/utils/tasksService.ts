@@ -51,11 +51,9 @@ export const createActivity = async (data: {
   }
   
   const { url, config } = httpRequestFactory.createRequest('/tasks', 'POST', {
-    ...data,
-    task: {
-      ...data.task,
-      created_by: currentUserId
-    }
+    task: data.task,
+    tool: data.tool,
+    created_by: currentUserId
   });
   const response = await fetch(url, config);
   
