@@ -69,27 +69,31 @@ export const createActivity = async (data: {
 
 export const updateActivity = async (activityId: number, data: {
   task: any;
-  tool?: {
-    type: EvaluationToolType;
-    methodology: any;
-  } | null;
-}) => {
+    tool?: {
+        type: EvaluationToolType;
+        methodology: any;
+    } | null;
+  }) => {
   try {
     const currentUserId = getCurrentUserId();
     if (!currentUserId) {
       throw new Error('Usuario no autenticado');
     }
-    
+    const requestData = {
+      task: {
+        ...data.task,
+        updated_by: currentUserId
+      },
+      tool: data.tool,
+      updated_by: currentUserId
+    };
+
+    console.log("Request data structure:", JSON.stringify(requestData, null, 2));
+
     const { url, config } = httpRequestFactory.createRequest(
       `/tasks/${activityId}`,
       'PUT',
-      {
-        ...data,
-        task: {
-          ...data.task,
-          updated_by: currentUserId
-        }
-      }
+      requestData
     );
 
     const response = await fetch(url, config);
@@ -104,9 +108,7 @@ export const updateActivity = async (activityId: number, data: {
     console.error(error);
     throw error;
   }
-};
-
-export const deleteActivity = async (idActivity: string) => {
+};export const deleteActivity = async (idActivity: string) => {
     try {
         const currentUserId = getCurrentUserId();
         if (!currentUserId) {
