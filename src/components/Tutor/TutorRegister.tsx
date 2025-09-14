@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { validateDocument, createTutorWithTutorship, getStudentsRudeOrCi } from '../../utils/tutorshipService';
 import { uploadTutorDocuments } from '../../utils/firebaseService';
+import { locationData } from '../AutoComplete/locationData';
 import Swal from 'sweetalert2';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,8 +22,72 @@ interface DocumentValidationResult {
 interface StudentData {
   rude: string;
   ci: string | null;
+  relacion: string;
   id?: number;
 }
+
+// Función para corregir errores de OCR en ubicaciones
+const correctLocationData = (input: string, type: 'departamento' | 'provincia' | 'localidad'): string => {
+  if (!input || input.trim() === '') return '';
+  
+  const cleanInput = input.trim().toUpperCase();
+  const validData = locationData[type];
+  
+  if (validData.includes(cleanInput)) {
+    return cleanInput;
+  }
+  
+  let bestMatch = '';
+  let bestScore = 0;
+  
+  for (const validLocation of validData) {
+    const similarity = calculateSimilarity(cleanInput, validLocation);
+    if (similarity > bestScore && similarity > 0.7) { // 70% de similitud mínima
+      bestScore = similarity;
+      bestMatch = validLocation;
+    }
+  }
+  
+  return bestMatch || cleanInput;
+};
+
+const calculateSimilarity = (str1: string, str2: string): number => {
+  const longer = str1.length > str2.length ? str1 : str2;
+  const shorter = str1.length > str2.length ? str2 : str1;
+  
+  if (longer.length === 0) return 1.0;
+  
+  const distance = levenshteinDistance(longer, shorter);
+  return (longer.length - distance) / longer.length;
+};
+
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+};
 
 const extractDocumentData = (rawTexts: {front: string | null, back: string | null}) => {
   const result: any = {};
@@ -62,9 +127,13 @@ const extractDocumentData = (rawTexts: {front: string | null, back: string | nul
 
     const locationMatch = rawTexts.back.match(/-En ([A-Z ]+) - ([A-Z ]+) -([A-Z ]+)\. gb/);
     if (locationMatch) {
-      result.departamento = locationMatch[1].trim();
-      result.provincia = locationMatch[2].trim();
-      result.localidad = locationMatch[3].trim();
+      const rawDepartamento = locationMatch[1].trim();
+      const rawProvincia = locationMatch[2].trim();
+      const rawLocalidad = locationMatch[3].trim();
+      
+      result.departamento = correctLocationData(rawDepartamento, 'departamento');
+      result.provincia = correctLocationData(rawProvincia, 'provincia');
+      result.localidad = correctLocationData(rawLocalidad, 'localidad');
     }
   }
 
@@ -96,8 +165,7 @@ const TutorRegister = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [currentStep, setCurrentStep] = useState<'validation' | 'form'>('validation');
-  const [studentsData, setStudentsData] = useState<StudentData[]>([{ rude: '', ci: null }]);
-  const [relacion, setRelacion] = useState<string>('Padre');
+  const [studentsData, setStudentsData] = useState<StudentData[]>([{ rude: '', ci: null, relacion: 'PADRE' }]);
   const [isFetchingIds, setIsFetchingIds] = useState(false);
 
   const frontInputRef = useRef<HTMLInputElement>(null);
@@ -256,7 +324,7 @@ const TutorRegister = () => {
   };
 
   const addAnotherStudent = () => {
-    setStudentsData([...studentsData, { rude: '', ci: null }]);
+    setStudentsData([...studentsData, { rude: '', ci: null, relacion: 'PADRE' }]);
   };
 
   const removeStudent = (index: number) => {
@@ -267,9 +335,13 @@ const TutorRegister = () => {
     }
   };
 
-  const handleStudentDataChange = (index: number, field: 'rude' | 'ci', value: string) => {
+  const handleStudentDataChange = (index: number, field: 'rude' | 'ci' | 'relacion', value: string) => {
     const newStudents = [...studentsData];
-    newStudents[index][field] = value === '' ? null : value;
+    if (field === 'relacion') {
+      newStudents[index][field] = value;
+    } else {
+      newStudents[index][field] = value === '' ? null : value;
+    }
     setStudentsData(newStudents);
   };
 
@@ -352,16 +424,23 @@ const TutorRegister = () => {
         throw new Error(uploadResult.error || 'Error al subir imágenes');
       }
 
-      // 2. Obtener IDs de estudiantes
+      // 2. Obtener IDs de estudiantes y preparar datos de tutoría
       const studentIds = await fetchStudentIds();
+      
+      // Preparar array de tutorías con relaciones individualizadas
+      const tutorshipData = studentsData
+        .filter(student => student.rude.trim() !== '')
+        .map((student, index) => ({
+          studentId: studentIds[index],
+          relacion: student.relacion
+        }));
 
       // 3. Crear tutor con tutorías
       const result = await createTutorWithTutorship({
         ...tutorData,
         url_imagefront: uploadResult.frontImageUrl || '',
         url_imageback: uploadResult.backImageUrl || '',
-        studentIds,
-        relacion
+        tutorshipData
       });
       
       if (result.success) {
@@ -407,8 +486,7 @@ const TutorRegister = () => {
       url_imagefront: '',
       url_imageback: ''
     });
-    setStudentsData([{ rude: '', ci: null }]);
-    setRelacion('Padre');
+    setStudentsData([{ rude: '', ci: null, relacion: 'PADRE' }]);
     setFrontImage(null);
     setBackImage(null);
     setFrontPreview('');
@@ -821,33 +899,16 @@ const TutorRegister = () => {
                           Datos de Tutoría
                         </h3>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Parentesco
-                            </label>
-                            <select
-                              value={relacion}
-                              onChange={(e) => setRelacion(e.target.value)}
-                              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
-                                        hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
-                                        transition duration-200 text-gray-700 dark:text-gray-300"
-                            >
-                              <option value="PADRE">PADRE</option>
-                              <option value="MADRE">MADRE</option>
-                              <option value="TUTOR">TUTOR</option>
-                              <option value="APODERADO">APODERADO</option>
-                            </select>
-                          </div>
-                        </div>
-                        
                         <h5 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
                           Estudiantes
                         </h5>
                         
                         {studentsData.map((student, index) => (
-                          <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
                             <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                RUDE
+                              </label>
                               <input
                                 type="text"
                                 value={student.rude}
@@ -861,6 +922,9 @@ const TutorRegister = () => {
                             </div>
                             
                             <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Carnet de Identidad
+                              </label>
                               <input
                                 type="text"
                                 value={student.ci || ''}
@@ -873,26 +937,46 @@ const TutorRegister = () => {
                               />
                             </div>
                             
-                            <div className="flex space-x-2">
-                              {studentsData.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeStudent(index)}
-                                  className="px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition"
-                                >
-                                  -
-                                </button>
-                              )}
-                              
-                              {index === studentsData.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={addAnotherStudent}
-                                  className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition"
-                                >
-                                  +
-                                </button>
-                              )}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Parentesco
+                              </label>
+                              <select
+                                value={student.relacion}
+                                onChange={(e) => handleStudentDataChange(index, 'relacion', e.target.value)}
+                                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 
+                                          hover:border-blue-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 
+                                          transition duration-200 text-gray-700 dark:text-gray-300"
+                              >
+                                <option value="PADRE">PADRE</option>
+                                <option value="MADRE">MADRE</option>
+                                <option value="TUTOR">TUTOR</option>
+                                <option value="APODERADO">APODERADO</option>
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <div className="flex space-x-2">
+                                {studentsData.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeStudent(index)}
+                                    className="px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition"
+                                  >
+                                    -
+                                  </button>
+                                )}
+                                
+                                {index === studentsData.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={addAnotherStudent}
+                                    className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition"
+                                  >
+                                    +
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}

@@ -40,9 +40,6 @@ export const createTutorWithTutorship = async (tutorshipData) => {
     console.log('Tutorship data:', tutorshipData); 
     try {
       const currentUserId = getCurrentUserId();
-      if (!currentUserId) {
-        throw new Error('Usuario no autenticado');
-      }
       
       const { url, config } = httpRequestFactory.createRequest('/tutor-student/tutorship', 'POST', {
         ...tutorshipData,

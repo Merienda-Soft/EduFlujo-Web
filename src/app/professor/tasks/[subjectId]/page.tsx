@@ -8,8 +8,6 @@ import { useUser } from '@auth0/nextjs-auth0/client';
 import { getProfessorByEmail } from '../../../../utils/tasksService';
 import { getManagementGlobal, subscribe } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
-import { createNotification } from '../../../../utils/notificationService';
-import { httpRequestFactory } from '../../../../utils/HttpRequestFactory';
 import {EvaluationToolType, RubricData, ChecklistData} from '../../../../types/evaluation';
 import EvaluationToolSelector from '../../../../components/Task/Evaluation/EvaluationToolSelector';
 import ChecklistBuilder from '../../../../components/Task/Evaluation/ChecklistBuilder';
