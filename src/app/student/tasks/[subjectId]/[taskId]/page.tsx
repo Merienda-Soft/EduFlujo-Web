@@ -8,11 +8,13 @@ import Swal from "sweetalert2";
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../../../../utils/firebase/firebaseConfig';
 import StudentEvaluationView from '../../../../../components/Task/Student/StudentEvaluationView'
+import { useUserRoles } from '../../../../../utils/roleUtils';
 
 const STATUS_COLORS = {
   0: "bg-orange-500",
   1: "bg-green-500",
-  2: "bg-blue-500", 
+  2: "bg-blue-500",
+  3: "bg-red-500", 
 };
 
 const FILE_ICONS = {
@@ -39,10 +41,14 @@ export default function TaskDetailPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const router = useRouter();
+  const { hasRole } = useUserRoles();
   const studentId = searchParams.get("studentId") || "";
   const courseId = searchParams.get("courseId");
   const managementId = searchParams.get("managementId");
   const taskId = Array.isArray(params.taskId) ? params.taskId[0] : params.taskId || "";
+
+  const isStudent = hasRole(['student']);
+  const isTutor = hasRole(['tutor']) && !isStudent;
 
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -165,7 +171,19 @@ export default function TaskDetailPage() {
   const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
-  const statusColor = STATUS_COLORS[assignment?.status || 0];
+  
+  const getStatusInfo = () => {
+    const statusText = assignment?.status === 0 ? 'Pendiente' : 
+                      assignment?.status === 1 ? 'Entregado' : 
+                      assignment?.status === 2 ? 'Calificado' : '';
+    const finalText = assignment?.status === 0 && isLate 
+      ? `${statusText} (entregar con retraso)` : statusText;
+    return {
+      color: STATUS_COLORS[assignment?.status || 0],text: finalText
+    };
+  };
+  
+  const statusInfo = getStatusInfo();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-28 lg:pt-[150px]">
@@ -174,14 +192,18 @@ export default function TaskDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{task?.name}</h1>
-              <div className="mt-2 flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${statusColor}`} />
-                <span className={`text-sm font-medium ${statusColor.replace('bg', 'text')}`}>
-                  {assignment?.status === 0 ? 'Pendiente' : 
-                   assignment?.status === 1 ? 'Entregado' : 
-                   assignment?.status === 2 ? 'Calificado' : ''}
-                  {isLate && !isSubmitted && ' (Vencida)'}
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{task?.name}</h1>
+                {isTutor && (
+                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+                    Tutor
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${statusInfo.color}`} />
+                <span className={`text-sm font-medium ${statusInfo.color.replace('bg', 'text')}`}>
+                  {statusInfo.text}
                 </span>
               </div>
             </div>
@@ -204,14 +226,6 @@ export default function TaskDetailPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex justify-between items-start mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Descripción</h2>
-                {isSubmitted && assignment?.status !== 2 && (
-                  <button
-                    onClick={handleCancelSubmit}
-                    className="text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-medium"
-                  >
-                    Cancelar envío
-                  </button>
-                )}
               </div>
               <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
                 {task?.description}
@@ -220,18 +234,23 @@ export default function TaskDetailPage() {
 
             {/* Submission Section - Movido aquí */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Detalles de la tarea</h2>
+              </div>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Entrega de tarea
-                </h2>
-                {isSubmitted && (
+                {isSubmitted && isStudent && (
                   <div className="flex items-center gap-2 text-green-500">
                     <CheckCircleIcon className="h-5 w-5" />
                     <span className="font-medium">Tarea entregada</span>
                   </div>
                 )}
+                {isSubmitted && isTutor && (
+                  <div className="flex items-center gap-2 text-blue-500">
+                    <CheckCircleIcon className="h-5 w-5" />
+                    <span className="font-medium">El estudiante entregó la tarea</span>
+                  </div>
+                )}
               </div>
-
               {isSubmitted ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -270,81 +289,116 @@ export default function TaskDetailPage() {
                         No hay archivos enviados
                       </p>
                     )}
+                    
+                    {/* Botón cancelar envío  */}
+                    {isStudent && assignment?.status !== 2 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <button
+                          onClick={handleCancelSubmit}
+                          className="text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-medium"
+                        >
+                          Cancelar envío
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label
-                      htmlFor="file-upload"
-                      className="flex flex-col items-center justify-center cursor-pointer"
-                    >
-                      <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300">
-                        Seleccionar archivos
-                      </span>
-                    </label>
-                  </div>
-
-                  {selectedFiles.length > 0 && (
-                    <div className="space-y-3">
-                      {selectedFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  {isStudent ? (
+                    <>
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                        <input
+                          type="file"
+                          multiple
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="file-upload"
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className="flex flex-col items-center justify-center cursor-pointer"
                         >
-                          <div className="flex items-center gap-3">
-                            <img 
-                              src={getFileIcon(file.name)} 
-                              alt="File icon" 
-                              className="h-6 w-6 object-contain"
-                            />
-                            <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                              {file.name}
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
+                          <span className="text-sm text-gray-600 dark:text-gray-300">
+                            Seleccionar archivos
                             </span>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveFile(index)}
-                            className="text-red-500 hover:text-red-600 p-1"
-                          >
-                            <XMarkIcon className="h-5 w-5" />
-                          </button>
+                          </label>
                         </div>
-                      ))}
-                    </div>
-                  )}
 
-                  <button
-                    onClick={handleSubmit}
-                    disabled={selectedFiles.length === 0 || isUploading}
-                    className={`w-full px-4 py-2 rounded-md text-white font-medium ${
-                      selectedFiles.length === 0 || isUploading
-                        ? 'bg-blue-400 cursor-not-allowed'
-                        : 'bg-blue-500 hover:bg-blue-600'
-                    }`}
-                  >
-                    {isUploading ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Subiendo... {Math.round(uploadProgress)}%</span>
-                      </div>
+                        {selectedFiles.length > 0 && (
+                          <div className="space-y-3">
+                            {selectedFiles.map((file, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <img 
+                                    src={getFileIcon(file.name)} 
+                                    alt="File icon" 
+                                    className="h-6 w-6 object-contain"
+                                  />
+                                  <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                                    {file.name}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveFile(index)}
+                                  className="text-red-500 hover:text-red-600 p-1"
+                                >
+                                  <XMarkIcon className="h-5 w-5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={handleSubmit}
+                          disabled={selectedFiles.length === 0 || isUploading}
+                          className={`w-full px-4 py-2 rounded-md text-white font-medium ${
+                            selectedFiles.length === 0 || isUploading
+                              ? 'bg-blue-400 cursor-not-allowed'
+                              : 'bg-blue-500 hover:bg-blue-600'
+                          }`}
+                        >
+                          {isUploading ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              <span>Subiendo... {Math.round(uploadProgress)}%</span>
+                            </div>
+                          ) : (
+                            'Enviar tarea'
+                          )}
+                        </button>
+                      </>
                     ) : (
-                      'Enviar tarea'
+                      <div className="text-center py-8">
+                        <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tarea pendiente
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          El estudiante aún no ha entregado esta tarea.
+                        </p>
+                      </div>
                     )}
-                  </button>
+                </div>
+              )}
+              {/* Mensaje informativo para tutores */}
+              {isTutor && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <strong>Visualización:</strong>{' '}
+                    Como tutor, solo puedes ver el estado y archivos de la tarea. El estudiante es quien debe entregar las tareas.
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Details Section - Movido aquí */}
+          {/* Details Section */}
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-24">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Detalles</h2>

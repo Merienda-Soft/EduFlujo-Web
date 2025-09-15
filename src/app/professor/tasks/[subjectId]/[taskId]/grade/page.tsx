@@ -211,17 +211,6 @@ export default function GradeTaskPage() {
             </div>
           </div>
         )}
-        {task && task.type !== 0 && (
-          <div className="mb-6 flex justify-end">
-            <button
-              onClick={saveGrades}
-              disabled={isSaving || changeCount === 0}
-              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition"
-            >
-              {isSaving ? 'Guardando...' : 'Guardar Calificaciones'}
-            </button>
-          </div>
-        )}
         <div className="space-y-4">
           {task && task.type === 0 ? (
             students.map((student, idx) => {
@@ -246,49 +235,27 @@ export default function GradeTaskPage() {
               );
             })
           ) : (
+            // Para tareas con metodología de evaluación, solo mostrar lista de estudiantes con botón de revisión
             students.map((student, idx) => {
               const status = getStudentStatus(student.status);
               return (
-                <div key={student.id} className={`flex flex-col md:flex-row md:items-center gap-2 p-4 rounded-lg border ${status.color} bg-gray-50 dark:bg-gray-900 w-full max-w-7xl mx-auto`}>
-                  <div className="flex flex-col md:flex-row md:items-center w-full gap-2">
-                    <div className="flex items-center gap-2 min-w-[300px]">
-                      <span className="font-semibold text-gray-900 dark:text-white truncate max-w-[300px]">{student.nombre}</span>
+                <div key={student.id} className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border ${status.color} bg-gray-50 dark:bg-gray-900`}>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`inline-block w-2 h-2 rounded-full ${status.color}`}></span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{student.nombre}</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${status.color} text-white`}>
+                        {status.text === 'Evaluada' ? 'Solo Revisión' : status.text}
+                      </span>
                     </div>
-                    <input
-                      type="number"
-                      className="w-20 px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-center"
-                      placeholder="Nota"
-                      value={student.calificacion}
-                      min={0}
-                      max={100}
-                      onChange={e => {
-                        let value = e.target.value;
-                        // Permitir vacío para borrar
-                        if (value === "") {
-                          handleGradeChange(idx, "");
-                          return;
-                        }
-                        // Solo permitir números entre 0 y 100
-                        const num = Number(value);
-                        if (!isNaN(num) && num >= 0 && num <= 100) {
-                          handleGradeChange(idx, value);
-                        }
-                      }}
-                      maxLength={5}
-                    />
-                    <input
-                      type="text"
-                      className="flex-1 px-2 py-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                      placeholder="Comentario"
-                      value={student.comentario || ''}
-                      onChange={e => {
-                        if (e.target.value.length <= 300) {
-                          handleCommentChange(idx, e.target.value);
-                        }
-                      }}
-                      maxLength={300}
-                    />
                   </div>
+                  <button
+                    className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold transition"
+                    title="Revisar entrega"
+                    onClick={() => handleOpenReview(student.id)}
+                  >
+                    Revisar Entrega
+                  </button>
                 </div>
               );
             })
@@ -339,7 +306,9 @@ export default function GradeTaskPage() {
 
                   <div className="mb-6">
                     <span className="font-semibold">Estado: </span>
-                    {reviewData.assignments[0].status === 2 ? (
+                    {task && task.type !== 0 ? (
+                      <span className="text-purple-600 font-semibold">Solo Revisión</span>
+                    ) : reviewData.assignments[0].status === 2 ? (
                       <span className="text-purple-600 font-semibold">Evaluada</span>
                     ) : reviewData.assignments[0].status === 1 ? (
                       <span className="text-green-600 font-semibold">Entregada</span>
@@ -348,44 +317,46 @@ export default function GradeTaskPage() {
                     )}
                   </div>
 
-                  {/* Archivos entregados */}
-                  <div className="mb-6">
-                    <h3 className="font-semibold mb-3 text-lg">Archivos entregados</h3>
-                    {reviewData.assignments[0].files && reviewData.assignments[0].files.length > 0 ? (
-                      <ul className="space-y-3 bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
-                        {reviewData.assignments[0].files.map((file, idx) => (
-                          <li key={file.url} className="flex items-center gap-3">
-                            <a 
-                              href={file.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="text-blue-600 hover:underline flex items-center gap-2"
-                            >
-                              <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                className="h-5 w-5" 
-                                fill="none" 
-                                viewBox="0 0 24 24" 
-                                stroke="currentColor"
+                  {/* Archivos entregados - Solo mostrar para tareas tipo 0 */}
+                  {task && task.type === 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-semibold mb-3 text-lg">Archivos entregados</h3>
+                      {reviewData.assignments[0].files && reviewData.assignments[0].files.length > 0 ? (
+                        <ul className="space-y-3 bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
+                          {reviewData.assignments[0].files.map((file, idx) => (
+                            <li key={file.url} className="flex items-center gap-3">
+                              <a 
+                                href={file.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-blue-600 hover:underline flex items-center gap-2"
                               >
-                                <path 
-                                  strokeLinecap="round" 
-                                  strokeLinejoin="round" 
-                                  strokeWidth={2} 
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                                />
-                              </svg>
-                              <span className="truncate max-w-xs">{file.name || 'Archivo'}</span>
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-gray-500 italic bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
-                        No hay archivos entregados
-                      </div>
-                    )}
-                  </div>
+                                <svg 
+                                  xmlns="http://www.w3.org/2000/svg" 
+                                  className="h-5 w-5" 
+                                  fill="none" 
+                                  viewBox="0 0 24 24" 
+                                  stroke="currentColor"
+                                >
+                                  <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                                  />
+                                </svg>
+                                <span className="truncate max-w-xs">{file.name || 'Archivo'}</span>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-gray-500 italic bg-gray-100 dark:bg-gray-900 rounded-lg p-4">
+                          No hay archivos entregados
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Evaluación */}
                   <div className="mb-6">
@@ -422,29 +393,32 @@ export default function GradeTaskPage() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block font-semibold mb-2">Comentario</label>
-                      <textarea
-                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white min-h-[100px]"
-                        placeholder="Escribe tus comentarios aquí..."
-                        value={reviewData.assignments[0].comment || ''}
-                        onChange={e => {
-                          if (e.target.value.length <= 300) {
-                            setReviewData(prev => ({ 
-                              ...prev, 
-                              assignments: [{ 
-                                ...prev.assignments[0], 
-                                comment: e.target.value 
-                              }] 
-                            }));
-                          }
-                        }}
-                        maxLength={300}
-                      />
-                      <div className="text-right text-sm text-gray-500 mt-1">
-                        {reviewData.assignments[0].comment?.length || 0}/300 caracteres
+                    {/* Comentario - Solo mostrar para tareas tipo 0 */}
+                    {task && task.type === 0 && (
+                      <div>
+                        <label className="block font-semibold mb-2">Comentario</label>
+                        <textarea
+                          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white min-h-[100px]"
+                          placeholder="Escribe tus comentarios aquí..."
+                          value={reviewData.assignments[0].comment || ''}
+                          onChange={e => {
+                            if (e.target.value.length <= 300) {
+                              setReviewData(prev => ({ 
+                                ...prev, 
+                                assignments: [{ 
+                                  ...prev.assignments[0], 
+                                  comment: e.target.value 
+                                }] 
+                              }));
+                            }
+                          }}
+                          maxLength={300}
+                        />
+                        <div className="text-right text-sm text-gray-500 mt-1">
+                          {reviewData.assignments[0].comment?.length || 0}/300 caracteres
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </>
               ) : (

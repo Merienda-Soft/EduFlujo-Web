@@ -28,6 +28,7 @@ export default function StudentTasksPage() {
   const courseId = searchParams.get("courseId");
   const subjectId = params.subjectId;
   const [selectedManagement, setSelectedManagement] = useState(getCurrentManagementData()?.id);
+  const [selectedManagementName] = useState(getCurrentManagementData()?.management);
   const materiaName = searchParams.get("materiaName");
 
   const [searchValue, setSearchValue] = useState("");
@@ -147,7 +148,7 @@ export default function StudentTasksPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tareas</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Gestión {selectedManagement} - {materiaName}
+              Gestión {selectedManagementName} - {materiaName}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
