@@ -106,7 +106,9 @@ export const updateActivity = async (activityId: number, data: {
     console.error(error);
     throw error;
   }
-};export const deleteActivity = async (idActivity: string) => {
+};
+
+export const deleteActivity = async (idActivity: string) => {
     try {
         const currentUserId = getCurrentUserId();
         if (!currentUserId) {
@@ -278,6 +280,30 @@ export const getTasksReportByCourse = async (courseId: string, professorId: stri
         });
         
         return { success: true };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
+export const getWeightsByDimension = async (professorId: string, courseId: string, subjectId: string, managementId: string, date?: string) => {
+    try {
+        const currentDate = date || new Date().toISOString().split('T')[0]; // Fecha actual si no se proporciona
+        const { url, config } = httpRequestFactory.createRequest(
+            `/tasks/weight/professor/${professorId}/course/${courseId}/subject/${subjectId}/management/${managementId}?date=${currentDate}`
+        );
+        const response = await fetch(url, config);
+        
+        if (!response.ok) {
+            throw new Error(`Error al obtener los pesos por dimensión: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.ok) {
+            throw new Error(data.error || 'Error al obtener los pesos por dimensión');
+        }
+
+        return data.data;
     } catch (error) {
         console.error(error);
         throw error;

@@ -1,4 +1,4 @@
-import { RubricData, ChecklistData } from '../../types/evaluation';
+import { RubricData, ChecklistData, AutoEvaluationBuilderData } from '../../types/evaluation';
 
 export const calculateRubricScore = (
   rubric: RubricData,
@@ -39,4 +39,27 @@ export const validateChecklistCompletion = (
   const score = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
 
   return { isValid, score };
+};
+
+// Helper autoevaluación
+export const calculateAutoEvaluationScore = (data: AutoEvaluationBuilderData): number => {
+  let total = 0;
+  
+  for (const dimension of data.dimensions) {
+    if (!dimension.criteria.length) continue;
+    
+    const dimensionWeight = 50; // Cada dimensión vale 50%
+    const criterionWeight = dimensionWeight / dimension.criteria.length; // Dividir entre criterios
+    
+    for (const criterion of dimension.criteria) {
+      const selectedLevel = criterion.levels.find(level => level.selected);
+      if (selectedLevel) {
+        // El valor del nivel se multiplica por el peso del criterio
+        const levelScore = (selectedLevel.value / criterion.levels.length) * criterionWeight;
+        total += levelScore;
+      }
+    }
+  }
+  
+  return Math.round(total);
 };

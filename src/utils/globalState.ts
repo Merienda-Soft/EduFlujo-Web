@@ -98,9 +98,8 @@ export const initializeManagement = async () => {
       currentUserEmail: storedUserEmail
     });
     
-    isInitialized = true; // Marcar como inicializado
+    isInitialized = true; 
   } catch (error) {
-    console.error('Error inicializando gestión:', error);
     setManagementGlobal({
       id: 0,
       year: 0,
@@ -112,7 +111,7 @@ export const initializeManagement = async () => {
         status: 0
       }
     });
-    isInitialized = true; // Marcar como inicializado incluso en error
+    isInitialized = true; 
   }
 };
 
@@ -129,12 +128,10 @@ export const isCurrentManagementActive = () => {
 };
 
 export const getUserIdByEmail = async (email: string): Promise<number | null> => {
-  // Validar que el email existe y no está vacío
   if (!email || email.trim() === '') {
     return null;
   }
 
-  // Si ya tenemos el usuario en caché para este email, devolverlo
   if (managementGlobal.currentUserId && managementGlobal.currentUserEmail === email) {
     return managementGlobal.currentUserId;
   }
