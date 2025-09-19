@@ -296,16 +296,22 @@ export default function TasksPage() {
   // Load dimension weights
   useEffect(() => {
     const loadDimensionWeights = async () => {
-      if (!professor || !params.subjectId || !courseId || !selectedManagement) return;
+      if (!professor || !params.subjectId || !courseId || !selectedManagement || !currentDate) return;
       setLoadingWeights(true);
       try {
-        const currentDate = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const dateForWeights = new Date(
+          currentDate.getFullYear(), 
+          currentDate.getMonth(), 
+          today.getDate()
+        ).toISOString().split('T')[0];
+        
         const weights = await getWeightsByDimension(
           professor.id.toString(),
           courseId.toString(),
           params.subjectId.toString(),
           selectedManagement.toString(),
-          currentDate
+          dateForWeights
         );
         setDimensionWeights(weights.weightByDimension || {});
       } catch (error) {
@@ -316,7 +322,7 @@ export default function TasksPage() {
       }
     };
     loadDimensionWeights();
-  }, [professor, params.subjectId, courseId, selectedManagement]);
+  }, [professor, params.subjectId, courseId, selectedManagement, currentDate]);
 
   useEffect(() => {
     const currentMonth = new Date().getMonth();
@@ -564,15 +570,22 @@ export default function TasksPage() {
 
   // Función para recargar pesos por dimensión
   const fetchDimensionWeights = async () => {
-    if (!professor || !params.subjectId || !courseId || !selectedManagement) return;
+    if (!professor || !params.subjectId || !courseId || !selectedManagement || !currentDate) return;
     try {
-      const currentDate = new Date().toISOString().split('T')[0];
+      // Usar año y mes del currentDate pero día actual
+      const today = new Date();
+      const dateForWeights = new Date(
+        currentDate.getFullYear(), 
+        currentDate.getMonth(), 
+        today.getDate()
+      ).toISOString().split('T')[0];
+      
       const weights = await getWeightsByDimension(
         professor.id.toString(),
         courseId.toString(),
         params.subjectId.toString(),
         selectedManagement.toString(),
-        currentDate
+        dateForWeights
       );
       setDimensionWeights(weights.weightByDimension || {});
     } catch (error) {
