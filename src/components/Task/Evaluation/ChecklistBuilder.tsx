@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChecklistData, ChecklistItem } from '../../../types/evaluation';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 type ChecklistBuilderProps = {
   initialData?: ChecklistData;
@@ -50,6 +51,16 @@ export default function ChecklistBuilder({ initialData, onChange }: ChecklistBui
         onChange={(e) => updateChecklist({ title: e.target.value })}
         className="w-full p-2 border rounded"
       />
+
+      <div className="flex justify-between items-center">
+        <button
+          type="button"
+          onClick={handleAddItem}
+          className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+        >
+          + Añadir Ítem
+        </button>
+      </div>
       
       {checklist.items.map((item, idx) => (
         <div key={idx} className="flex items-center gap-3 p-2 border rounded">
@@ -81,20 +92,13 @@ export default function ChecklistBuilder({ initialData, onChange }: ChecklistBui
               updatedItems.splice(idx, 1);
               updateChecklist({ items: updatedItems });
             }}
-            className="text-red-500"
+            className="text-red-500 hover:text-red-700 p-2"
+            title="Eliminar ítem"
           >
-            Eliminar
+            <TrashIcon className="h-4 w-4" />
           </button>
         </div>
       ))}
-      
-      <button
-        type="button"
-        onClick={handleAddItem}
-        className="bg-green-500 text-white px-4 py-2 rounded"
-      >
-        + Añadir Ítem
-      </button>
     </div>
   );
 }

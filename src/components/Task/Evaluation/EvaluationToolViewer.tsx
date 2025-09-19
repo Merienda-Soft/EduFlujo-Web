@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { EvaluationToolType, ChecklistData, RubricData } from '../../../types/evaluation';
-import { calculateRubricScore, validateChecklistCompletion } from '../../../utils/evaluation/helpers';
+import { EvaluationToolType, ChecklistData, RubricData, AutoEvaluationBuilderData } from '../../../types/evaluation';
+import { calculateRubricScore, validateChecklistCompletion, calculateAutoEvaluationScore } from '../../../utils/evaluation/helpers';
 
 export default function EvaluationToolViewer({ 
   methodology, 
@@ -12,15 +12,16 @@ export default function EvaluationToolViewer({
 }: {
   methodology: {
     type: EvaluationToolType;
-    methodology: RubricData | ChecklistData;
+    methodology: RubricData | ChecklistData | AutoEvaluationBuilderData;
   } | null;
   onScoreChange?: (score: number) => void;
-  onEvaluationChange?: (updatedMethodology: RubricData | ChecklistData) => void;
+  onEvaluationChange?: (updatedMethodology: RubricData | ChecklistData | AutoEvaluationBuilderData) => void;
   initialScore?: number;
 }) {
   const [selectedLevels, setSelectedLevels] = useState<{criterionIndex: number, levelIndex: number}[]>([]);
   const [checkedItems, setCheckedItems] = useState<boolean[]>([]);
-  const [currentMethodology, setCurrentMethodology] = useState<RubricData | ChecklistData | null>(null);
+  const [autoEvaluationState, setAutoEvaluationState] = useState<AutoEvaluationBuilderData | null>(null);
+  const [currentMethodology, setCurrentMethodology] = useState<RubricData | ChecklistData | AutoEvaluationBuilderData | null>(null);
 
   // Inicialización cuando cambia methodology
   useEffect(() => {
@@ -41,6 +42,10 @@ export default function EvaluationToolViewer({
       }));
       setSelectedLevels(initialSelected);
       setCurrentMethodology(rubric);
+    } else if (methodology.type === EvaluationToolType.AUTO_EVALUATION) {
+      const autoEvaluation = methodologyData as AutoEvaluationBuilderData;
+      setAutoEvaluationState(autoEvaluation);
+      setCurrentMethodology(autoEvaluation);
     }
   }, [methodology?.type]);
 
@@ -71,6 +76,12 @@ export default function EvaluationToolViewer({
       if (hasChanges) {
         setSelectedLevels(newSelected);
         setCurrentMethodology(rubric);
+      }
+    } else if (methodology.type === EvaluationToolType.AUTO_EVALUATION) {
+      const autoEvaluation = methodologyData as AutoEvaluationBuilderData;
+      if (JSON.stringify(autoEvaluation) !== JSON.stringify(autoEvaluationState)) {
+        setAutoEvaluationState(autoEvaluation);
+        setCurrentMethodology(autoEvaluation);
       }
     }
   }, [methodology?.methodology]); 
@@ -107,6 +118,10 @@ export default function EvaluationToolViewer({
           selected: selectedLevels[index]?.levelIndex || 0
         }))
       };
+    } else if (methodology.type === EvaluationToolType.AUTO_EVALUATION) {
+      const autoEvaluation = currentMethodology as AutoEvaluationBuilderData;
+      score = calculateAutoEvaluationScore(autoEvaluation);
+      updatedMethodology = autoEvaluation;
     }
     
     if (onScoreChange && score !== undefined) {
@@ -116,7 +131,7 @@ export default function EvaluationToolViewer({
     if (onEvaluationChange && updatedMethodology) {
       onEvaluationChange(updatedMethodology);
     }
-  }, [checkedItems, selectedLevels]); 
+  }, [checkedItems, selectedLevels, autoEvaluationState]); 
 
   // Handlers memoizados
   const handleCheckboxChange = useCallback((index: number) => {
@@ -134,6 +149,27 @@ export default function EvaluationToolViewer({
       return newSelected;
     });
   }, []);
+
+  const handleAutoEvaluationChange = useCallback((updatedData: AutoEvaluationBuilderData) => {
+    setAutoEvaluationState(updatedData);
+    setCurrentMethodology(updatedData);
+  }, []);
+
+  const handleAutoEvaluationLevelSelect = useCallback((dimensionIndex: number, criterionIndex: number, levelIndex: number) => {
+    if (!autoEvaluationState) return;
+    
+    const updatedData = { ...autoEvaluationState };
+    const dimension = updatedData.dimensions[dimensionIndex];
+    const criterion = dimension.criteria[criterionIndex];
+    
+    // Deseleccionar todos los niveles del criterio
+    criterion.levels.forEach(level => level.selected = false);
+    // Seleccionar el nivel elegido
+    criterion.levels[levelIndex].selected = true;
+    
+    setAutoEvaluationState(updatedData);
+    setCurrentMethodology(updatedData);
+  }, [autoEvaluationState]);
 
   if (!methodology) {
     return <div className="text-gray-500">No hay herramienta de evaluación definida</div>;
@@ -213,6 +249,72 @@ export default function EvaluationToolViewer({
             Puntuación actual: {calculateRubricScore(rubric, selectedLevels)}/100
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (methodology.type === EvaluationToolType.AUTO_EVALUATION) {
+    const autoEvaluation = currentMethodology as AutoEvaluationBuilderData;
+    if (!autoEvaluation) return null;
+
+    const getDimensionScore = (dimensionIndex: number): number => {
+      const dimension = autoEvaluation.dimensions[dimensionIndex];
+      if (!dimension.criteria.length) return 0;
+      
+      const criterionWeight = 50 / dimension.criteria.length; // 50% dividido entre criterios
+      let dimensionTotal = 0;
+      
+      for (const criterion of dimension.criteria) {
+        const selectedLevel = criterion.levels.find(level => level.selected);
+        if (selectedLevel) {
+          const maxValue = Math.max(...criterion.levels.map(l => l.value));
+          const levelScore = (selectedLevel.value / maxValue) * criterionWeight;
+          dimensionTotal += levelScore;
+        }
+      }
+      
+      return Math.round(dimensionTotal);
+    };
+
+    return (
+      <div className="space-y-4">
+        <h3 className="font-bold text-lg">{autoEvaluation.title}</h3>
+
+        {/* Dimensiones */}
+        {autoEvaluation.dimensions.map((dimension, dimensionIndex) => (
+          <div key={dimension.name} className="border p-3 rounded-lg">
+            <h4 className="font-medium text-lg mb-3">
+              {dimension.name} ({getDimensionScore(dimensionIndex)}/50)
+            </h4>
+
+            {/* Criterios de la dimensión */}
+            {dimension.criteria.map((criterion, criterionIndex) => (
+              <div key={criterionIndex} className="border p-2 rounded mb-2">
+                <div className="font-medium mb-2">
+                  {criterion.description}
+                </div>
+                
+                {/* Niveles del criterio */}
+                <div className="space-y-1">
+                  {criterion.levels.map((level, levelIndex) => (
+                    <div key={levelIndex} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`auto-criterion-${dimensionIndex}-${criterionIndex}`}
+                        checked={level.selected}
+                        onChange={() => handleAutoEvaluationLevelSelect(dimensionIndex, criterionIndex, levelIndex)}
+                        className="h-4 w-4"
+                      />
+                      <span className="flex-1">
+                        {level.name} ({level.value} pts)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     );
   }

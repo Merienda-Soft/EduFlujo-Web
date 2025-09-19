@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { RubricData, RubricCriteria } from '../../../types/evaluation';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 type RubricBuilderProps = {
   initialData?: RubricData;
@@ -54,6 +55,11 @@ export default function RubricBuilder({ initialData, onChange }: RubricBuilderPr
     });
   };
 
+  const handleRemoveCriterion = (index: number) => {
+    const updatedCriteria = rubric.criteria.filter((_, i) => i !== index);
+    updateRubric({ criteria: updatedCriteria });
+  };
+
   return (
     <div className="space-y-4">
       <input
@@ -63,20 +69,40 @@ export default function RubricBuilder({ initialData, onChange }: RubricBuilderPr
         onChange={(e) => updateRubric({ title: e.target.value })}
         className="w-full p-2 border rounded"
       />
+
+      <div className="flex justify-between items-center">
+        <button
+          type="button"
+          onClick={handleAddCriterion}
+          className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+        >
+          + Añadir Criterio
+        </button>
+      </div>
       
       {rubric.criteria.map((criterion, idx) => (
         <div key={idx} className="border p-3 rounded-lg">
-          <input
-            type="text"
-            placeholder="Nombre del criterio"
-            value={criterion.name}
-            onChange={(e) => {
-              const updatedCriteria = [...rubric.criteria];
-              updatedCriteria[idx].name = e.target.value;
-              updateRubric({ criteria: updatedCriteria });
-            }}
-            className="w-full p-2 border rounded mb-2"
-          />
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Nombre del criterio"
+              value={criterion.name}
+              onChange={(e) => {
+                const updatedCriteria = [...rubric.criteria];
+                updatedCriteria[idx].name = e.target.value;
+                updateRubric({ criteria: updatedCriteria });
+              }}
+              className="flex-1 p-2 border rounded"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveCriterion(idx)}
+              className="text-red-500 hover:text-red-700 p-2"
+              title="Eliminar criterio"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
           
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div>
@@ -107,7 +133,7 @@ export default function RubricBuilder({ initialData, onChange }: RubricBuilderPr
                   updatedCriteria[idx].levels[levelIdx].description = e.target.value;
                   updateRubric({ criteria: updatedCriteria });
                 }}
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-2 border rounded text-sm"
               />
               <input
                 type="number"
@@ -118,20 +144,12 @@ export default function RubricBuilder({ initialData, onChange }: RubricBuilderPr
                   updatedCriteria[idx].levels[levelIdx].score = Number(e.target.value);
                   updateRubric({ criteria: updatedCriteria });
                 }}
-                className="w-20 p-2 border rounded"
+                className="w-20 p-2 border rounded text-sm"
               />
             </div>
           ))}
         </div>
       ))}
-      
-      <button
-        type="button"
-        onClick={handleAddCriterion}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        + Añadir Criterio
-      </button>
     </div>
   );
 }
