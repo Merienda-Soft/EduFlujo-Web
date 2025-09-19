@@ -2,13 +2,17 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { getTaskByIdWithAssignmentsForStudent, submitTaskFiles, cancelSubmitTaskFiles } from "../../../../../utils/tasksService";
+import { getTaskByIdWithAssignmentsForStudent, submitTaskFiles, cancelSubmitTaskFiles, updateTaskGrades } from "../../../../../utils/tasksService";
 import { CalendarIcon, ClockIcon, AcademicCapIcon, DocumentIcon, XMarkIcon, ArrowUpTrayIcon, CheckCircleIcon, ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import Swal from "sweetalert2";
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../../../../utils/firebase/firebaseConfig';
 import StudentEvaluationView from '../../../../../components/Task/Student/StudentEvaluationView'
+import AutoEvaluationView from '../../../../../components/Task/Student/AutoEvaluationView'
 import { useUserRoles } from '../../../../../utils/roleUtils';
+import { EvaluationToolType } from '../../../../../types/evaluation';
+import { calculateAutoEvaluationScore } from '../../../../../utils/evaluation/helpers';
+import { isCurrentManagementActive } from '../../../../../utils/globalState';
 
 const STATUS_COLORS = {
   0: "bg-orange-500",
@@ -56,6 +60,11 @@ export default function TaskDetailPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [submittedFiles, setSubmittedFiles] = useState([]);
+  // Estados para autoevaluación
+  const [autoEvaluationData, setAutoEvaluationData] = useState(null);
+  const [isSavingAutoEvaluation, setIsSavingAutoEvaluation] = useState(false);
+  const [autoEvaluationScore, setAutoEvaluationScore] = useState(0);
+  const [isAutoEvaluationComplete, setIsAutoEvaluationComplete] = useState(false);
 
   const fetchTaskDetails = useCallback(async () => {
     try {
@@ -81,6 +90,25 @@ export default function TaskDetailPage() {
     fetchTaskDetails();
   }, [fetchTaskDetails]);
 
+  // Configurar datos de autoevaluación cuando cambie la tarea
+  useEffect(() => {
+    const assignment = task?.assignments?.[0];
+    const isAutoEvaluation = assignment?.type === EvaluationToolType.AUTO_EVALUATION;
+    
+    if (isAutoEvaluation && assignment?.evaluation_methodology) {
+      setAutoEvaluationData(assignment.evaluation_methodology);
+      const score = calculateAutoEvaluationScore(assignment.evaluation_methodology);
+      setAutoEvaluationScore(score);
+      
+      const isComplete = assignment.evaluation_methodology.dimensions.every(dimension =>
+        dimension.criteria.every(criterion =>
+          criterion.levels.some(level => level.selected)
+        )
+      );
+      setIsAutoEvaluationComplete(isComplete);
+    }
+  }, [task]);
+
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
     setSelectedFiles(prevFiles => [...prevFiles, ...files]);
@@ -100,10 +128,8 @@ export default function TaskDetailPage() {
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        // 1. Subir a Firebase Storage
         const storageRef = ref(storage, `student-tasks/${studentId}/${taskId}/${Date.now()}_${file.name}`);
         await uploadBytes(storageRef, file);
-        // 2. Obtener la URL pública de descarga
         const url = await getDownloadURL(storageRef);
         uploadedFiles.push({
           name: file.name,
@@ -154,6 +180,53 @@ export default function TaskDetailPage() {
     return FILE_ICONS[extension] || FILE_ICONS['default'];
   };
 
+  // Funciones para autoevaluación
+  const handleAutoEvaluationChange = useCallback((updatedMethodology, score) => {
+    setAutoEvaluationData(updatedMethodology);
+    setAutoEvaluationScore(score || 0);
+  }, []);
+
+  const handleAutoEvaluationCompletion = useCallback((isComplete) => {
+    setIsAutoEvaluationComplete(isComplete);
+  }, []);
+
+  const handleSaveAutoEvaluation = async () => {
+    if (!autoEvaluationData) return;
+    
+    setIsSavingAutoEvaluation(true);
+    try {
+      const studentsData = [{
+        student_id: parseInt(studentId),
+        qualification: autoEvaluationScore.toString(), 
+        comment: "",
+        evaluation_methodology: autoEvaluationData
+      }];
+      
+      console.log('Datos enviados para autoevaluación:', studentsData);
+      
+      const response = await updateTaskGrades(taskId, studentsData);
+      if (!response.ok) throw new Error('Error al guardar autoevaluación');
+      
+      await fetchTaskDetails();
+      Swal.fire({
+        icon: 'success',
+        title: 'Éxito',
+        text: 'Autoevaluación guardada correctamente',
+        timer: 1800,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo guardar la autoevaluación'
+      });
+    } finally {
+      setIsSavingAutoEvaluation(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-28 lg:pt-[150px] flex items-center justify-center">
@@ -171,6 +244,8 @@ export default function TaskDetailPage() {
   const comment = assignment?.comment || '';
   const isSubmitted = assignment?.status === 1 || assignment?.status === 2;
   const isLate = new Date(task?.end_date) < new Date();
+  
+  const isAutoEvaluation = normalizedData.type === EvaluationToolType.AUTO_EVALUATION;
   
   const getStatusInfo = () => {
     const statusText = assignment?.status === 0 ? 'Pendiente' : 
@@ -235,22 +310,65 @@ export default function TaskDetailPage() {
             {/* Submission Section - Movido aquí */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Detalles de la tarea</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {isAutoEvaluation ? 'Autoevaluación' : 'Detalles de la tarea'}
+                </h2>
               </div>
-              <div className="flex justify-between items-center mb-4">
-                {isSubmitted && isStudent && (
-                  <div className="flex items-center gap-2 text-green-500">
-                    <CheckCircleIcon className="h-5 w-5" />
-                    <span className="font-medium">Tarea entregada</span>
+
+              {isAutoEvaluation ? (
+                /* Sección para Autoevaluación */
+                <div className="space-y-4">
+                  {normalizedData.methodology && (
+                    <AutoEvaluationView 
+                      methodology={autoEvaluationData || normalizedData.methodology}
+                      onEvaluationChange={handleAutoEvaluationChange}
+                      onCompletionChange={handleAutoEvaluationCompletion}
+                      disabled={assignment?.status === 2} // Solo lectura si ya está calificada
+                    />
+                  )}
+                  
+                  {isStudent && assignment?.status !== 2 && isCurrentManagementActive() && (
+                    <div className="mt-6 space-y-3">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={handleSaveAutoEvaluation}
+                          disabled={isSavingAutoEvaluation || !autoEvaluationData || !isAutoEvaluationComplete || !isCurrentManagementActive()}
+                          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                            isSavingAutoEvaluation || !autoEvaluationData || !isAutoEvaluationComplete || !isCurrentManagementActive()
+                              ? 'bg-gray-400 cursor-not-allowed text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                        >
+                          {isSavingAutoEvaluation ? (
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              <span>Guardando...</span>
+                            </div>
+                          ) : (
+                            'Guardar Autoevaluación'
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Sección para tareas */
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    {isSubmitted && isStudent && (
+                      <div className="flex items-center gap-2 text-green-500">
+                        <CheckCircleIcon className="h-5 w-5" />
+                        <span className="font-medium">Tarea entregada</span>
+                      </div>
+                    )}
+                    {isSubmitted && isTutor && (
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <CheckCircleIcon className="h-5 w-5" />
+                        <span className="font-medium">El estudiante entregó la tarea</span>
+                      </div>
+                    )}
                   </div>
-                )}
-                {isSubmitted && isTutor && (
-                  <div className="flex items-center gap-2 text-blue-500">
-                    <CheckCircleIcon className="h-5 w-5" />
-                    <span className="font-medium">El estudiante entregó la tarea</span>
-                  </div>
-                )}
-              </div>
               {isSubmitted ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -291,7 +409,7 @@ export default function TaskDetailPage() {
                     )}
                     
                     {/* Botón cancelar envío  */}
-                    {isStudent && assignment?.status !== 2 && (
+                    {isStudent && assignment?.status !== 2 && isCurrentManagementActive() && (
                       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
                         <button
                           onClick={handleCancelSubmit}
@@ -307,78 +425,88 @@ export default function TaskDetailPage() {
                 <div className="space-y-4">
                   {isStudent ? (
                     <>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
-                        <input
-                          type="file"
-                          multiple
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          id="file-upload"
-                        />
-                        <label
-                          htmlFor="file-upload"
-                          className="flex flex-col items-center justify-center cursor-pointer"
-                        >
-                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
-                          <span className="text-sm text-gray-600 dark:text-gray-300">
-                            Seleccionar archivos
-                            </span>
-                          </label>
-                        </div>
-
-                        {selectedFiles.length > 0 && (
-                          <div className="space-y-3">
-                            {selectedFiles.map((file, index) => (
-                              <div
-                                key={index}
-                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <img 
-                                    src={getFileIcon(file.name)} 
-                                    alt="File icon" 
-                                    className="h-6 w-6 object-contain"
-                                  />
-                                  <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                                    {file.name}
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => handleRemoveFile(index)}
-                                  className="text-red-500 hover:text-red-600 p-1"
-                                >
-                                  <XMarkIcon className="h-5 w-5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <button
-                          onClick={handleSubmit}
-                          disabled={selectedFiles.length === 0 || isUploading}
-                          className={`w-full px-4 py-2 rounded-md text-white font-medium ${
-                            selectedFiles.length === 0 || isUploading
-                              ? 'bg-blue-400 cursor-not-allowed'
-                              : 'bg-blue-500 hover:bg-blue-600'
-                          }`}
-                        >
-                          {isUploading ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              <span>Subiendo... {Math.round(uploadProgress)}%</span>
+                      {isCurrentManagementActive() ? (
+                        <>
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                            <input
+                              type="file"
+                              multiple
+                              onChange={handleFileSelect}
+                              className="hidden"
+                              id="file-upload"
+                            />
+                            <label
+                              htmlFor="file-upload"
+                              className="flex flex-col items-center justify-center cursor-pointer"
+                            >
+                              <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
+                              <span className="text-sm text-gray-600 dark:text-gray-300">
+                                Seleccionar archivos
+                                </span>
+                              </label>
                             </div>
-                          ) : (
-                            'Enviar tarea'
-                          )}
-                        </button>
-                      </>
-                    ) : (
-                      <div className="text-center py-8">
-                        <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Tarea pendiente
-                        </h3>
+
+                            {selectedFiles.length > 0 && (
+                              <div className="space-y-3">
+                                {selectedFiles.map((file, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <img 
+                                        src={getFileIcon(file.name)} 
+                                        alt="File icon" 
+                                        className="h-6 w-6 object-contain"
+                                      />
+                                      <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                                        {file.name}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleRemoveFile(index)}
+                                      className="text-red-500 hover:text-red-600 p-1"
+                                    >
+                                      <XMarkIcon className="h-5 w-5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <button
+                              onClick={handleSubmit}
+                              disabled={selectedFiles.length === 0 || isUploading || !isCurrentManagementActive()}
+                              className={`w-full px-4 py-2 rounded-md text-white font-medium ${
+                                selectedFiles.length === 0 || isUploading || !isCurrentManagementActive()
+                                  ? 'bg-blue-400 cursor-not-allowed'
+                                  : 'bg-blue-500 hover:bg-blue-600'
+                              }`}
+                            >
+                              {isUploading ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Subiendo... {Math.round(uploadProgress)}%</span>
+                                </div>
+                              ) : (
+                                'Enviar tarea'
+                              )}
+                            </button>
+                        </>
+                      ) : (
+                        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+                          <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                            <strong>Gestión inactiva:</strong> No puedes enviar tareas cuando la gestión académica no está activa.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <DocumentIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Tarea pendiente
+                      </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           El estudiante aún no ha entregado esta tarea.
                         </p>
@@ -386,14 +514,17 @@ export default function TaskDetailPage() {
                     )}
                 </div>
               )}
-              {/* Mensaje informativo para tutores */}
-              {isTutor && (
+              
+              {/* Mensaje informativo para tutores en tareas de archivos */}
+              {!isAutoEvaluation && isTutor && (
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     <strong>Visualización:</strong>{' '}
                     Como tutor, solo puedes ver el estado y archivos de la tarea. El estudiante es quien debe entregar las tareas.
                   </p>
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>
@@ -427,11 +558,14 @@ export default function TaskDetailPage() {
                 )}
               </div>
             </div>
-            <div>
-              <StudentEvaluationView 
-                methodology={normalizedData} 
-              />
-            </div>
+            {/* Solo mostrar StudentEvaluationView cuando NO sea autoevaluación */}
+            {!isAutoEvaluation && (
+              <div>
+                <StudentEvaluationView 
+                  methodology={normalizedData} 
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

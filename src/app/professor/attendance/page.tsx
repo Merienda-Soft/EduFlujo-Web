@@ -423,20 +423,22 @@ export default function AttendancePage() {
                 </div>
               </div>
               
-              <button
-                onClick={handleSaveAttendance}
-                disabled={saving}
-                className={`inline-flex items-center px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
-              >
-                {saving ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                ) : (
-                  <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                )}
-                {existingAttendance ? 'Actualizar' : 'Guardar'}
-              </button>
+              {isCurrentManagementActive() && (
+                <button
+                  onClick={handleSaveAttendance}
+                  disabled={saving}
+                  className={`inline-flex items-center px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                  )}
+                  {existingAttendance ? 'Actualizar' : 'Guardar'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -492,10 +494,13 @@ export default function AttendancePage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleAttendanceChange(student.student_id.toString(), ATTENDANCE_STATES.PRESENT)}
+                        disabled={!isCurrentManagementActive()}
                         className={`flex-1 py-2 rounded-lg border-2 flex items-center justify-center font-bold text-sm transition-colors ${
-                          currentStatus === ATTENDANCE_STATES.PRESENT
-                            ? 'bg-green-500 text-white border-green-500'
-                            : 'border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-900'
+                          !isCurrentManagementActive() 
+                            ? 'opacity-50 cursor-not-allowed border-gray-300 text-gray-400'
+                            : currentStatus === ATTENDANCE_STATES.PRESENT
+                              ? 'bg-green-500 text-white border-green-500'
+                              : 'border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-900'
                         }`}
                       >
                         Presente
@@ -503,10 +508,13 @@ export default function AttendancePage() {
                       
                       <button
                         onClick={() => handleAttendanceChange(student.student_id.toString(), ATTENDANCE_STATES.ABSENT)}
+                        disabled={!isCurrentManagementActive()}
                         className={`flex-1 py-2 rounded-lg border-2 flex items-center justify-center font-bold text-sm transition-colors ${
-                          currentStatus === ATTENDANCE_STATES.ABSENT
-                            ? 'bg-red-500 text-white border-red-500'
-                            : 'border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900'
+                          !isCurrentManagementActive() 
+                            ? 'opacity-50 cursor-not-allowed border-gray-300 text-gray-400'
+                            : currentStatus === ATTENDANCE_STATES.ABSENT
+                              ? 'bg-red-500 text-white border-red-500'
+                              : 'border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900'
                         }`}
                       >
                         Ausente
@@ -514,10 +522,13 @@ export default function AttendancePage() {
                       
                       <button
                         onClick={() => handleAttendanceChange(student.student_id.toString(), ATTENDANCE_STATES.JUSTIFIED)}
+                        disabled={!isCurrentManagementActive()}
                         className={`flex-1 py-2 rounded-lg border-2 flex items-center justify-center font-bold text-sm transition-colors ${
-                          currentStatus === ATTENDANCE_STATES.JUSTIFIED
-                            ? 'bg-orange-400 dark:bg-orange-400 text-orange-900 dark:text-orange-900 border-orange-500'
-                            : 'border-orange-500 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900'
+                          !isCurrentManagementActive() 
+                            ? 'opacity-50 cursor-not-allowed border-gray-300 text-gray-400'
+                            : currentStatus === ATTENDANCE_STATES.JUSTIFIED
+                              ? 'bg-orange-400 dark:bg-orange-400 text-orange-900 dark:text-orange-900 border-orange-500'
+                              : 'border-orange-500 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900'
                         }`}
                       >
                         Licencia

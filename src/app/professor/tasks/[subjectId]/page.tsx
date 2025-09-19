@@ -3,15 +3,16 @@
 import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { getActivities, createActivity, updateActivity, deleteActivity } from '../../../../utils/tasksService';
+import { getActivities, createActivity, updateActivity, deleteActivity, getWeightsByDimension } from '../../../../utils/tasksService';
 import { useUser } from '@auth0/nextjs-auth0/client';
 import { getProfessorByEmail } from '../../../../utils/tasksService';
-import { getManagementGlobal, subscribe } from '../../../../utils/globalState';
+import { getManagementGlobal, subscribe, isCurrentManagementActive } from '../../../../utils/globalState';
 import Swal from 'sweetalert2';
-import {EvaluationToolType, RubricData, ChecklistData} from '../../../../types/evaluation';
+import {EvaluationToolType, RubricData, ChecklistData, AutoEvaluationBuilderData} from '../../../../types/evaluation';
 import EvaluationToolSelector from '../../../../components/Task/Evaluation/EvaluationToolSelector';
 import ChecklistBuilder from '../../../../components/Task/Evaluation/ChecklistBuilder';
 import RubricBuilder from '../../../../components/Task/Evaluation/RubricBuilder';
+import AutoEvaluationBuilder from '../../../../components/Task/Evaluation/AutoEvaluationBuilder';
 
 // Task filters
 const TASK_FILTERS = {
@@ -44,6 +45,8 @@ export default function TasksPage() {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
   const [selectedManagement, setSelectedManagement] = useState(managementGlobal?.id);
+  const [dimensionWeights, setDimensionWeights] = useState({});
+  const [loadingWeights, setLoadingWeights] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     date: '',
@@ -57,7 +60,7 @@ export default function TasksPage() {
   
   const [evaluationTool, setEvaluationTool] = useState<{
     type: EvaluationToolType | null;
-    data: RubricData | ChecklistData | null;
+    data: RubricData | ChecklistData | AutoEvaluationBuilderData | null;
   }>({ type: null, data: null });
 
   // Estado para edición
@@ -89,15 +92,20 @@ export default function TasksPage() {
       mappedType = EvaluationToolType.RUBRIC;
     } else if (type === 2) {
       mappedType = EvaluationToolType.CHECKLIST;
+    } else if (type === 3) {
+      mappedType = EvaluationToolType.AUTO_EVALUATION;
     }
 
-    // Si no hay metodología, retornar datos por defecto
     if (!methodology) {
       return {
         type: mappedType,
         data: mappedType === EvaluationToolType.RUBRIC 
           ? { title: 'Rúbrica de Evaluación', criteria: [] }
-          : { title: 'Lista de Cotejo', items: [] }
+          : mappedType === EvaluationToolType.CHECKLIST
+          ? { title: 'Lista de Cotejo', items: [] }
+          : mappedType === EvaluationToolType.AUTO_EVALUATION
+          ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+          : null
       };
     }
 
@@ -137,6 +145,31 @@ export default function TasksPage() {
             }))
           };
         }
+      } else if (mappedType === EvaluationToolType.AUTO_EVALUATION) {
+        if (methodologyData.dimensions && Array.isArray(methodologyData.dimensions)) {
+          mappedData = {
+            title: methodologyData.title || 'Autoevaluación',
+            dimensions: methodologyData.dimensions.map(dimension => ({
+              name: dimension.name,
+              criteria: dimension.criteria && Array.isArray(dimension.criteria)
+                ? dimension.criteria.map(criterion => ({
+                    description: criterion.description || '',
+                    levels: criterion.levels && Array.isArray(criterion.levels)
+                      ? criterion.levels.map(level => ({
+                          name: level.name || '',
+                          value: level.value || 0,
+                          selected: level.selected || false
+                        }))
+                      : [
+                          { name: 'Si', value: 3, selected: false },
+                          { name: 'A veces', value: 2, selected: false },
+                          { name: 'No', value: 1, selected: false }
+                        ]
+                  }))
+                : []
+            }))
+          };
+        }
       }
     } catch (error) {
       console.error('Error parsing evaluation methodology:', error);
@@ -145,7 +178,11 @@ export default function TasksPage() {
     if (!mappedData) {
       mappedData = mappedType === EvaluationToolType.RUBRIC 
         ? { title: 'Rúbrica de Evaluación', criteria: [] }
-        : { title: 'Lista de Cotejo', items: [] };
+        : mappedType === EvaluationToolType.CHECKLIST
+        ? { title: 'Lista de Cotejo', items: [] }
+        : mappedType === EvaluationToolType.AUTO_EVALUATION
+        ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+        : null;
     }
 
     return { type: mappedType, data: mappedData };
@@ -256,6 +293,31 @@ export default function TasksPage() {
     loadTasks();
   }, [professor, params.subjectId, courseId, selectedManagement]);
 
+  // Load dimension weights
+  useEffect(() => {
+    const loadDimensionWeights = async () => {
+      if (!professor || !params.subjectId || !courseId || !selectedManagement) return;
+      setLoadingWeights(true);
+      try {
+        const currentDate = new Date().toISOString().split('T')[0];
+        const weights = await getWeightsByDimension(
+          professor.id.toString(),
+          courseId.toString(),
+          params.subjectId.toString(),
+          selectedManagement.toString(),
+          currentDate
+        );
+        setDimensionWeights(weights.weightByDimension || {});
+      } catch (error) {
+        console.error('Error loading dimension weights:', error);
+        setDimensionWeights({});
+      } finally {
+        setLoadingWeights(false);
+      }
+    };
+    loadDimensionWeights();
+  }, [professor, params.subjectId, courseId, selectedManagement]);
+
   useEffect(() => {
     const currentMonth = new Date().getMonth();
     setCurrentDate(new Date(managementGlobal?.year || new Date().getFullYear(), currentMonth, 1));
@@ -325,8 +387,71 @@ export default function TasksPage() {
     });
   }, [tasks, searchValue, currentDate, taskFilter]);
 
+  // Validaciones de ponderación por dimensión
+  const validateDimensionWeight = (dimensionId, newWeight) => {
+    const currentWeight = dimensionWeights[dimensionId]?.weight || 0;
+    const availableWeight = 100 - currentWeight;
+    
+    if (currentWeight >= 100) {
+      return {
+        isValid: false,
+        message: `La dimensión ya tiene el 100% asignado. Ajusta otras tareas de esta dimensión.`
+      };
+    }
+    
+    if (newWeight > availableWeight) {
+      return {
+        isValid: false,
+        message: `La ponderación no puede ser mayor a ${availableWeight}% (disponible en esta dimensión).`
+      };
+    }
+    
+    return { isValid: true, message: '' };
+  };
+
+  const getDimensionName = (dimensionId) => {
+    const names = { '1': 'SER', '2': 'SABER', '3': 'HACER', '4': 'DECIDIR', '5': 'AUTOEVALUACIÓN' };
+    return names[dimensionId] || '';
+  };
+
+  const isAutoEvaluationExists = () => {
+    return (dimensionWeights['5']?.weight || 0) > 0;
+  };
+
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'tipo' && value === '5') {
+      setFormData(prev => ({ ...prev, [field]: value, ponderacion: '100' }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+    
+    if (field === 'ponderacion' && formData.tipo && formData.tipo !== '5') {
+      const weightValue = Number(value);
+      if (!isNaN(weightValue) && weightValue > 0) {
+        const validation = validateDimensionWeight(formData.tipo, weightValue);
+        if (!validation.isValid) {
+          // Solo mostrar como advertencia, no bloquear
+          setFormError(validation.message);
+        } else {
+          setFormError('');
+        }
+      }
+    }
+    
+    if (field === 'tipo') {
+      const isAutoEvaluationDimension = value === '5';
+      const currentToolType = evaluationTool.type;
+      
+      // Limpiar errores previos
+      setFormError('');
+      
+      if (isAutoEvaluationDimension && currentToolType !== EvaluationToolType.AUTO_EVALUATION) {
+        setEvaluationTool({ type: null, data: null });
+      }
+      else if (!isAutoEvaluationDimension && currentToolType === EvaluationToolType.AUTO_EVALUATION) {
+        setEvaluationTool({ type: null, data: null });
+      }
+    }
   };
 
   const handleCheckboxToggle = () => {
@@ -393,6 +518,20 @@ export default function TasksPage() {
           setFormError('La lista de cotejo debe tener al menos un ítem');
           return false;
         }
+      } else if (evaluationTool.type === EvaluationToolType.AUTO_EVALUATION) {
+        const autoEvaluation = evaluationTool.data as AutoEvaluationBuilderData;
+        if (autoEvaluation.dimensions.every(dimension => dimension.criteria.length === 0)) {
+          setFormError('La autoevaluación debe tener al menos un criterio en alguna dimensión');
+          return false;
+        }
+        for (const dimension of autoEvaluation.dimensions) {
+          for (const criterion of dimension.criteria) {
+            if (criterion.levels.length === 0) {
+              setFormError('Cada criterio debe tener al menos un nivel de evaluación');
+              return false;
+            }
+          }
+        }
       }
     }
 
@@ -423,6 +562,24 @@ export default function TasksPage() {
     }
   };
 
+  // Función para recargar pesos por dimensión
+  const fetchDimensionWeights = async () => {
+    if (!professor || !params.subjectId || !courseId || !selectedManagement) return;
+    try {
+      const currentDate = new Date().toISOString().split('T')[0];
+      const weights = await getWeightsByDimension(
+        professor.id.toString(),
+        courseId.toString(),
+        params.subjectId.toString(),
+        selectedManagement.toString(),
+        currentDate
+      );
+      setDimensionWeights(weights.weightByDimension || {});
+    } catch (error) {
+      console.error('Error loading dimension weights:', error);
+    }
+  };
+
   const isEditing = !!editTask;
   const modalTitle = isEditing ? 'Editar Tarea' : 'Nueva Tarea';
   const modalButton = isEditing ? (updating ? 'Actualizando...' : 'Actualizar Tarea') : (creating ? 'Creando...' : 'Crear Tarea');
@@ -430,6 +587,45 @@ export default function TasksPage() {
   const handleCreateOrUpdateTask = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    const pondValue = Number(formData.ponderacion);
+    const dimensionId = formData.tipo;
+    
+    if (dimensionId === '5' && !editTask && isAutoEvaluationExists()) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Autoevaluación ya existe',
+        text: 'Ya existe una autoevaluación para este trimestre. Solo se permite una autoevaluación por trimestre.',
+        confirmButtonText: 'Entendido'
+      });
+      return;
+    }
+    
+    // Validar pesos por dimensión (solo para dimensiones que no sean autoevaluación en edición)
+    if (dimensionId !== '5') {
+      const currentWeight = dimensionWeights[dimensionId]?.weight || 0;
+      const availableWeight = 100 - currentWeight;
+      
+      if (currentWeight >= 100 && !editTask) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Dimensión completa',
+          text: `La dimensión ${getDimensionName(dimensionId)} ya tiene el 100% asignado. Ajusta otras tareas de esta dimensión.`,
+          confirmButtonText: 'Entendido'
+        });
+        return;
+      }
+      
+      if (pondValue > availableWeight) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Ponderación excedida',
+          text: `La ponderación no puede ser mayor a ${availableWeight}% (disponible en la dimensión ${getDimensionName(dimensionId)}).`,
+          confirmButtonText: 'Entendido'
+        });
+        return;
+      }
+    }
 
     if (formData.type === 1 && !evaluationTool.type) {
       setFormError('Seleccione una herramienta de evaluación');
@@ -465,6 +661,7 @@ export default function TasksPage() {
             weight: Number(formData.ponderacion),
             is_autoevaluation: 0,
             quarter: 'Q1',
+            type: formData.type,
             start_date: formData.isPastTask ? formData.startDate : editTask.startDate,
             end_date: endDateISO
           }
@@ -525,6 +722,7 @@ export default function TasksPage() {
       
       closeModal();
       await fetchTasks(professor.id, params.subjectId, courseId);
+      await fetchDimensionWeights();
     } catch (error) {
       setFormError(isEditing ? 'No se pudo actualizar la tarea.' : 'No se pudo crear la tarea. Intenta nuevamente.');
       Swal.fire({
@@ -561,6 +759,7 @@ export default function TasksPage() {
         showConfirmButton: false
       });
       await fetchTasks(professor.id, params.subjectId, courseId);
+      await fetchDimensionWeights(); // Recargar pesos después de eliminar
     } catch (error) {
       setError('Error al eliminar la tarea');
       Swal.fire({
@@ -627,15 +826,17 @@ export default function TasksPage() {
               </svg>
               Material de Apoyo
             </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              disabled={!courseId}
-              title={!courseId ? 'No se puede crear tarea sin curso válido' : 'Nueva Tarea'}
-            >
-              <PlusIcon className="h-5 w-5 mr-2" />
-              Nueva Tarea
-            </button>
+            {isCurrentManagementActive() && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={!courseId}
+                title={!courseId ? 'No se puede crear tarea sin curso válido' : 'Nueva Tarea'}
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Nueva Tarea
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -735,27 +936,46 @@ export default function TasksPage() {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Ponderación (%) *</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                    Ponderación (%) *
+                    {formData.tipo === '5' && (
+                      <span className="ml-2 text-cyan-600 text-xs">(Autoevaluación: 100% automático)</span>
+                    )}
+                  </label>
                   <input 
                     type="number" 
                     min={1} 
                     max={100} 
                     step={1}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                      formData.tipo === '5' ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''
+                    }`}
                     value={formData.ponderacion} 
                     onChange={e => {
+                      if (formData.tipo === '5') return; // No permitir cambios en autoevaluación
                       const value = e.target.value;
                       if (value === '' || (Number(value) >= 1 && Number(value) <= 100)) {
                         handleInputChange('ponderacion', value);
                       }
                     }} 
                     onKeyPress={(e) => {
+                      if (formData.tipo === '5') {
+                        e.preventDefault();
+                        return;
+                      }
                       if (!/[0-9]/.test(e.key)) {
                         e.preventDefault();
                       }
                     }}
+                    disabled={formData.tipo === '5'}
                     required 
                   />
+                  {formData.tipo && formData.tipo !== '5' && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      Disponible: {Math.max(0, 100 - (dimensionWeights[formData.tipo]?.weight || 0))}% 
+                      (Total usado: {dimensionWeights[formData.tipo]?.weight || 0}%)
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
@@ -788,14 +1008,19 @@ export default function TasksPage() {
                   <h3 className="font-bold mb-3 text-lg">Herramienta de Evaluación</h3>
                   
                   <EvaluationToolSelector 
-                    selectedType={evaluationTool.type} 
+                    selectedType={evaluationTool.type}
+                    selectedDimension={formData.tipo}
                     onChange={(type) => {
                       if (type !== evaluationTool.type) {
                         setEvaluationTool({
                           type,
                           data: type === EvaluationToolType.RUBRIC 
                             ? { title: 'Rúbrica de Evaluación', criteria: [] }
-                            : { title: 'Lista de Cotejo', items: [] }
+                            : type === EvaluationToolType.CHECKLIST
+                            ? { title: 'Lista de Cotejo', items: [] }
+                            : type === EvaluationToolType.AUTO_EVALUATION
+                            ? { title: 'Autoevaluación', dimensions: [{ name: 'SER', criteria: [] }, { name: 'DECIDIR', criteria: [] }] }
+                            : null
                         });
                       }
                     }} 
@@ -820,23 +1045,36 @@ export default function TasksPage() {
                       />
                     </div>
                   )}
+
+                  {evaluationTool.type === EvaluationToolType.AUTO_EVALUATION && (
+                    <div className="mt-4">
+                      <AutoEvaluationBuilder 
+                        key={`autoevaluation-${isEditing ? editTask?.id : 'new'}`}
+                        initialData={evaluationTool.data as AutoEvaluationBuilderData}
+                        onChange={(data) => setEvaluationTool(prev => ({ ...prev, data }))}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Footer sticky */}
               <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-                <div className="mb-6 flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="only-grade" 
-                    checked={formData.type === 1} 
-                    onChange={handleCheckboxToggle} 
-                    className="form-checkbox h-5 w-5 text-blue-600" 
-                  />
-                  <label htmlFor="only-grade" className="text-sm text-gray-700 dark:text-gray-300">
-                    Tarea solo para calificar (sin entrega de alumnos)
-                  </label>
-                </div>
+                {/* Solo mostrar checkbox si NO es autoevaluación */}
+                {formData.tipo !== '5' && (
+                  <div className="mb-6 flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="only-grade" 
+                      checked={formData.type === 1} 
+                      onChange={handleCheckboxToggle} 
+                      className="form-checkbox h-5 w-5 text-blue-600" 
+                    />
+                    <label htmlFor="only-grade" className="text-sm text-gray-700 dark:text-gray-300">
+                      Tarea solo para calificar (sin entrega de alumnos)
+                    </label>
+                  </div>
+                )}
                 
                 {formError && (
                   <div className="mb-4 text-red-500 text-sm font-medium">{formError}</div>
@@ -913,6 +1151,65 @@ export default function TasksPage() {
 
       {/* Tasks List */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Resumen de pesos por dimensión */}
+        <div className="flex justify-end mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-900 p-4">
+            {loadingWeights ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400">Cargando pesos...</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {DIMENSION_OPTIONS.map((dimension) => {
+                  const weight = dimensionWeights[dimension.value]?.weight || 0;
+                  const isAutoEval = dimension.value === '5';
+                  
+                  const dimensionColors = {
+                    '1': { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700' },      // SER - Azul
+                    '2': { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-700' },   // SABER - Verde
+                    '3': { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-700' }, // HACER - Morado
+                    '4': { bg: 'bg-orange-500', light: 'bg-orange-100', text: 'text-orange-700' }, // DECIDIR - Naranja
+                    '5': { bg: 'bg-cyan-500', light: 'bg-cyan-100', text: 'text-cyan-700' }        // AUTOEVALUACIÓN - Cyan
+                  };
+                  
+                  const colors = dimensionColors[dimension.value];
+                  
+                  return (
+                    <div key={dimension.value} className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 p-2">
+                          {dimension.text}
+                        </span>
+                        {isAutoEval ? (
+                          <span className={`text-xs font-semibold ${weight > 0 ? colors.text : 'text-gray-500'}`}>
+                            {weight > 0 ? 'Activa' : 'Inactiva'}
+                          </span>
+                        ) : (
+                          <span className={`text-xs font-semibold ${colors.text}`}>
+                            {weight}%
+                          </span>
+                        )}
+                      </div>
+                      
+                      {isAutoEval ? (
+                        <div className={`h-2 rounded-full ${weight > 0 ? colors.bg : 'bg-gray-300'}`}></div>
+                      ) : (
+                        <div className={`h-2 rounded-full ${colors.light} relative overflow-hidden`}>
+                          <div 
+                            className={`h-full rounded-full transition-all duration-300 ${colors.bg}`}
+                            style={{ width: `${Math.min(weight, 100)}%` }}
+                          ></div>
+                          {weight > 100 && (
+                            <div className="absolute inset-0 h-full bg-red-500 opacity-20 rounded-full"></div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         {loading && !hasFetched ? (
           <div className="flex flex-col items-center justify-center py-24">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mb-6"></div>
@@ -984,24 +1281,26 @@ export default function TasksPage() {
                       title="Calificar tarea"
                       onClick={() => router.push(`/professor/tasks/${params.subjectId}/${task.id}/grade?courseId=${courseId}`)}
                     >
-                      Ir a Calificar =&gt;
+                      Calificar
                     </button>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4">
-                      <button
-                        onClick={() => openEditModal(task)}
-                        className="p-2 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
-                        title="Editar tarea"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="p-2 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                        title="Eliminar tarea"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
+                    {isCurrentManagementActive() && (
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4">
+                        <button
+                          onClick={() => openEditModal(task)}
+                          className="p-2 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
+                          title="Editar tarea"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-2 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                          title="Eliminar tarea"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

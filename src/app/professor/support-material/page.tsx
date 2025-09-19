@@ -283,27 +283,29 @@ export default function SupportMaterialPage() {
                 accept="*"
                 disabled={uploading}
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="inline-flex items-center px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60"
-              >
-                {uploading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Subiendo...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                    Subir Material
-                  </>
-                )}
-              </button>
+              {isCurrentManagementActive() && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex items-center px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60"
+                >
+                  {uploading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Subiendo...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
+                      </svg>
+                      Subir Material
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -337,15 +339,17 @@ export default function SupportMaterialPage() {
                         <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                           {new Date(mat.submitted_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
                         </span>
-                        <button
-                          onClick={() => handleDelete(mat.id)}
-                          className="ml-1 p-1 rounded-full bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 text-red-600 dark:text-red-300 transition-colors opacity-70 group-hover:opacity-100"
-                          title="Eliminar archivo"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                        {isCurrentManagementActive() && (
+                          <button
+                            onClick={() => handleDelete(mat.id)}
+                            className="ml-1 p-1 rounded-full bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 text-red-600 dark:text-red-300 transition-colors opacity-70 group-hover:opacity-100"
+                            title="Eliminar archivo"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

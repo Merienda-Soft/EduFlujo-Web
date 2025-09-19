@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { getActivityByIdWithAssignments, updateTaskGrades, getTaskByIdWithAssignmentsForStudent } from '../../../../../../utils/tasksService';
 import EvaluationToolViewer from '../../../../../../components/Task/Evaluation/EvaluationToolViewer'
+import { EvaluationToolType } from '../../../../../../types/evaluation';
 import Swal from 'sweetalert2';
 
 export default function GradeTaskPage() {
@@ -28,7 +29,6 @@ export default function GradeTaskPage() {
       setIsLoading(true);
       try {
         const response = await getActivityByIdWithAssignments(params.taskId);
-        console.log('Evaluation methodology structure:', response);
         setTask(response.task);
         if (response.task && response.task.assignments) {
           setStudents(response.task.assignments.map(a => ({
@@ -82,6 +82,26 @@ export default function GradeTaskPage() {
   }, []);
 
   const saveGrades = async () => {
+    const isAutoEvaluation = students.some(student => 
+      student.evaluationTool?.type === EvaluationToolType.AUTO_EVALUATION
+    );
+    if (isAutoEvaluation) {
+      const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Estás a punto de actualizar las notas de autoevaluación. Los estudiantes son quienes llevan a cabo la autoevaluación.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, actualizar',
+        cancelButtonText: 'Cancelar'
+      });
+      
+      if (!result.isConfirmed) {
+        return; 
+      }
+    }
+    
     setIsSaving(true);
     try {
       const studentsData = students.map(s => ({
@@ -94,7 +114,13 @@ export default function GradeTaskPage() {
       const response = await updateTaskGrades(params.taskId, studentsData);
       if (!response.ok) throw new Error('Error al guardar');
       setChangeCount(0);
-      Swal.fire({ icon: 'success', title: 'Éxito', text: 'Calificaciones actualizadas correctamente', timer: 1800, showConfirmButton: false });
+      Swal.fire({ 
+        icon: 'success', 
+        title: 'Éxito', 
+        text: 'Calificaciones actualizadas correctamente', 
+        timer: 1800, 
+        showConfirmButton: false 
+      });
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron guardar las calificaciones.' });
     } finally {
@@ -107,7 +133,7 @@ export default function GradeTaskPage() {
     switch (status) {
       case 2: return { color: 'bg-purple-500', text: 'Evaluada' };
       case 1: return { color: 'bg-green-500', text: 'Entregada' };
-      default: return { color: 'bg-yellow-500', text: 'Pendiente' };
+      default: return { color: 'bg-orange-500', text: 'Pendiente' };
     }
   };
 
@@ -215,19 +241,38 @@ export default function GradeTaskPage() {
           {task && task.type === 0 ? (
             students.map((student, idx) => {
               const status = getStudentStatus(student.status);
+              
+              const isAutoEvaluation = task.dimension_id === 5;
+              const hasNoGrade = !student.calificacion || student.calificacion.trim() === '' || student.calificacion === '0';
+              const isButtonDisabled = isAutoEvaluation && hasNoGrade;
+              
               return (
                 <div key={student.id} className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border ${status.color} bg-gray-50 dark:bg-gray-900`}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`inline-block w-2 h-2 rounded-full ${status.color}`}></span>
                       <span className="font-semibold text-gray-900 dark:text-white">{student.nombre}</span>
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${status.color} text-white`}>{status.text}</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        isAutoEvaluation ? 'bg-cyan-500 text-white' : `${status.color} text-white`
+                      }`}>
+                        {isAutoEvaluation ? 'Autoevaluación' : status.text}
+                      </span>
+                      {isButtonDisabled && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500 text-white">
+                          Sin Autoevaluación
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button
-                    className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold transition"
-                    title="Revisar entrega"
-                    onClick={() => handleOpenReview(student.id)}
+                    className={`px-3 py-1 rounded-lg text-sm font-semibold transition ${
+                      isButtonDisabled 
+                        ? 'bg-gray-600 cursor-not-allowed text-gray-200' 
+                        : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                    }`}
+                    title={isButtonDisabled ? 'El estudiante debe completar su autoevaluación primero' : 'Revisar entrega'}
+                    onClick={() => !isButtonDisabled && handleOpenReview(student.id)}
+                    disabled={isButtonDisabled}
                   >
                     Revisar Entrega
                   </button>
@@ -238,21 +283,44 @@ export default function GradeTaskPage() {
             // Para tareas con metodología de evaluación, solo mostrar lista de estudiantes con botón de revisión
             students.map((student, idx) => {
               const status = getStudentStatus(student.status);
+              
+              const isAutoEvaluation = (
+                task.dimension_id === 5 || 
+                task.dimension?.id === 5 || 
+                task.dimension?.dimension === 'Autoevaluación' ||
+                task.dimension?.dimension?.toLowerCase().includes('autoevaluaci')
+              );
+              const hasNoGrade = !student.calificacion || student.calificacion.trim() === '' || student.calificacion === '0';
+              const isButtonDisabled = isAutoEvaluation && hasNoGrade;
+              
               return (
                 <div key={student.id} className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border ${status.color} bg-gray-50 dark:bg-gray-900`}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`inline-block w-2 h-2 rounded-full ${status.color}`}></span>
                       <span className="font-semibold text-gray-900 dark:text-white">{student.nombre}</span>
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${status.color} text-white`}>
-                        {status.text === 'Evaluada' ? 'Solo Revisión' : status.text}
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        isAutoEvaluation ? 'bg-cyan-500 text-white' : `${status.color} text-white`
+                      }`}>
+                        {isAutoEvaluation ? 'Autoevaluación' : status.text === 'Evaluada' ? 'Solo Revisión' : status.text}
                       </span>
+                      {/* Mensaje adicional para autoevaluaciones sin completar */}
+                      {isButtonDisabled && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500 text-white">
+                          Sin Autoevaluación
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button
-                    className="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold transition"
-                    title="Revisar entrega"
-                    onClick={() => handleOpenReview(student.id)}
+                    className={`px-3 py-1 rounded-lg text-sm font-semibold transition ${
+                      isButtonDisabled 
+                        ? 'bg-gray-600 cursor-not-allowed text-gray-200' 
+                        : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                    }`}
+                    title={isButtonDisabled ? 'El estudiante debe completar su autoevaluación primero' : 'Revisar entrega'}
+                    onClick={() => !isButtonDisabled && handleOpenReview(student.id)}
+                    disabled={isButtonDisabled}
                   >
                     Revisar Entrega
                   </button>
@@ -307,7 +375,11 @@ export default function GradeTaskPage() {
                   <div className="mb-6">
                     <span className="font-semibold">Estado: </span>
                     {task && task.type !== 0 ? (
-                      <span className="text-purple-600 font-semibold">Solo Revisión</span>
+                      reviewData.assignments[0].type === EvaluationToolType.AUTO_EVALUATION ? (
+                        <span className="text-cyan-600 font-semibold">Autoevaluación</span>
+                      ) : (
+                        <span className="text-purple-600 font-semibold">Solo Revisión</span>
+                      )
                     ) : reviewData.assignments[0].status === 2 ? (
                       <span className="text-purple-600 font-semibold">Evaluada</span>
                     ) : reviewData.assignments[0].status === 1 ? (
@@ -317,7 +389,6 @@ export default function GradeTaskPage() {
                     )}
                   </div>
 
-                  {/* Archivos entregados - Solo mostrar para tareas tipo 0 */}
                   {task && task.type === 0 && (
                     <div className="mb-6">
                       <h3 className="font-semibold mb-3 text-lg">Archivos entregados</h3>
@@ -393,7 +464,6 @@ export default function GradeTaskPage() {
                       />
                     </div>
 
-                    {/* Comentario - Solo mostrar para tareas tipo 0 */}
                     {task && task.type === 0 && (
                       <div>
                         <label className="block font-semibold mb-2">Comentario</label>
