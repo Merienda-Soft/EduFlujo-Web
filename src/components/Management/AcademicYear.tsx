@@ -212,13 +212,17 @@ const AcademicYear = () => {
       {showProgress ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
           <div className="max-w-2xl mx-auto text-gray-800 dark:text-gray-300">
-            <Steps current={currentStep} direction="vertical" className="mb-8">
-              <Step title="Validando datos" />
-              <Step title="Creando estructura" />
-              <Step title="Clonando cursos" />
-              <Step title="Asignando materias" />
-              <Step title="Configurando paralelos" />
-              <Step title="Finalizando proceso" />
+            <Steps 
+              current={currentStep} 
+              direction="vertical" 
+              className="mb-8 text-gray-800 dark:text-gray-300"
+            >
+              <Step title={<span className="dark:text-white">Validando datos</span>} />
+              <Step title={<span className="dark:text-white">Creando estructura</span>} />
+              <Step title={<span className="dark:text-white">Clonando cursos</span>} />
+              <Step title={<span className="dark:text-white">Asignando materias</span>} />
+              <Step title={<span className="dark:text-white">Configurando paralelos</span>} />
+              <Step title={<span className="dark:text-white">Finalizando proceso</span>} />
             </Steps>
 
             <Progress
