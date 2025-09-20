@@ -54,17 +54,20 @@ const AcademicYear = () => {
       setLoading(true);
       const data = await getYearManagements();
       setManagements(data);
-      
-      const activeManagements = data.filter((m: Management) => m.status === 0);
-      
-      if (activeManagements.length > 0) {
-        const mostRecent = activeManagements.sort((a, b) => 
-          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-        )[0];
-        
+
+      if (!data || data.length === 0) {
+        message.warning('No se encontraron gestiones académicas.');
+        setSourceManagement(null);
+        return;
+      }
+
+      const mostRecent = data.slice().sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0];
+
+      if (mostRecent.status === 0) {
         setSourceManagement(mostRecent);
         prefillFormDates(mostRecent);
       } else {
+        setSourceManagement(null);
         message.warning('No se encontraron gestiones académicas listas.');
       }
     } catch (error) {
