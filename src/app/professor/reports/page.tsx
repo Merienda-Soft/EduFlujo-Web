@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
 import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from '../../../utils/globalState';
 import { getProfessorByEmail, getTasksReportByCourse } from '../../../utils/tasksService';
+import { getCentralizadorReport, getBoletinesReport } from '../../../utils/reportsService';
 import Swal from 'sweetalert2';
 
 export default function ReportsPage() {
@@ -68,13 +69,132 @@ export default function ReportsPage() {
     return acc;
   }, {}));
 
-  // Descargar informe trimestral
+  // Mostrar opciones de descarga
   const handleCourseReport = async (curso: any) => {
     if (!professor?.id || !selectedManagement) {
       Swal.fire("Error", "No se pudo obtener la información necesaria para generar el reporte", "error");
       return;
     }
 
+    const { value: reportType } = await Swal.fire({
+      title: '<span style="color: #E5E7EB;">Opciones de Descarga</span>',
+      html: `
+        <div style="background: #374151; border-radius: 8px; padding: 0;">
+          <div style="padding: 16px; border-bottom: 1px solid #4B5563;">
+            <p style="color: #9CA3AF; font-size: 14px; margin: 0;">${curso.course} - Paralelo ${curso.parallel}</p>
+          </div>
+          <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+            <!-- Informe Trimestral -->
+            <div class="report-option" data-value="informe-trimestral" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #1E40AF; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #1E3A8A; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #3B82F6; border-radius: 50%; margin-bottom: 12px;">
+                <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 style="color: white; font-weight: 600; margin: 0 0 4px 0; font-size: 16px;">Informe<br/>Trimestral</h3>
+                <p style="color: #93C5FD; font-size: 12px; margin: 0;">Actividades por<br/>trimestre</p>
+              </div>
+            </div>
+            
+            <!-- Centralizador -->
+            <div class="report-option" data-value="centralizador" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #059669; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #065F46; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #10B981; border-radius: 50%; margin-bottom: 12px;">
+                <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 style="color: white; font-weight: 600; margin: 0 0 4px 0; font-size: 16px;">Centralizador</h3>
+                <p style="color: #6EE7B7; font-size: 12px; margin: 0;">Excel anual<br/>completo</p>
+              </div>
+            </div>
+            
+            <!-- Boletines -->
+            <div class="report-option" data-value="boletines" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #7C3AED; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #581C87; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #8B5CF6; border-radius: 50%; margin-bottom: 12px;">
+                <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 style="color: white; font-weight: 600; margin: 0 0 4px 0; font-size: 16px;">Boletines</h3>
+                <p style="color: #C4B5FD; font-size: 12px; margin: 0;">PDFs<br/>individuales</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      background: '#1F2937',
+      showCancelButton: true,
+      cancelButtonText: 'Cancelar',
+      showConfirmButton: false,
+      buttonsStyling: false,
+      width: '600px',
+      customClass: {
+        popup: 'swal2-dark-popup',
+        cancelButton: 'swal2-dark-cancel-button',
+        title: 'swal2-dark-title'
+      },
+      didOpen: () => {
+        // Añadir estilos CSS dinámicamente
+        const style = document.createElement('style');
+        style.textContent = `
+          .swal2-dark-popup {
+            background-color: #1F2937 !important;
+            border: 1px solid #374151 !important;
+          }
+          .swal2-dark-title {
+            color: #E5E7EB !important;
+          }
+          .swal2-dark-cancel-button {
+            background-color: #4B5563 !important;
+            color: #E5E7EB !important;
+            border: none !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            font-weight: 500 !important;
+            transition: background-color 0.3s ease !important;
+          }
+          .swal2-dark-cancel-button:hover {
+            background-color: #6B7280 !important;
+          }
+          .report-option:hover {
+            transform: scale(1.05) !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+          }
+        `;
+        document.head.appendChild(style);
+
+        const reportOptions = document.querySelectorAll('.report-option');
+        reportOptions.forEach(option => {
+          option.addEventListener('click', () => {
+            const value = option.getAttribute('data-value');
+            Swal.clickConfirm();
+            Swal.getPopup().setAttribute('data-return-value', value);
+          });
+        });
+      },
+      preConfirm: () => {
+        const popup = Swal.getPopup();
+        return popup.getAttribute('data-return-value');
+      }
+    });
+
+    if (!reportType) return; // Si el usuario cancela
+
+    // Manejar cada tipo de reporte
+    if (reportType === 'informe-trimestral') {
+      await handleInformeTrimestral(curso);
+    } else if (reportType === 'centralizador') {
+      await handleCentralizador(curso);
+    } else if (reportType === 'boletines') {
+      await handleBoletines(curso);
+    }
+  };
+
+  // Manejar informe trimestral (funcionalidad actual)
+  const handleInformeTrimestral = async (curso: any) => {
     const { value: quarter } = await Swal.fire({
       title: 'Seleccionar Trimestre',
       input: 'select',
@@ -123,6 +243,76 @@ export default function ReportsPage() {
       console.error('Error al generar el reporte:', error);
       Swal.close();
       Swal.fire("Error", "No se pudo generar el reporte. Por favor, intente nuevamente.", "error");
+    }
+  };
+
+  // Manejar centralizador
+  const handleCentralizador = async (curso: any) => {
+    if (!selectedManagement) {
+      Swal.fire("Error", "No se pudo obtener la información de gestión necesaria", "error");
+      return;
+    }
+
+    Swal.fire({
+      title: "Generando centralizador...",
+      text: `Preparando Excel anual completo para ${curso.course} ${curso.parallel}`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      await getCentralizadorReport(
+        curso.courseId.toString(),
+        selectedManagement.toString()
+      );
+
+      Swal.close();
+      Swal.fire({
+        icon: "success",
+        title: "Centralizador Descargado",
+        text: `El centralizador para el curso ${curso.course} ${curso.parallel} se está descargando`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Error al generar el centralizador:', error);
+      Swal.close();
+      Swal.fire("Error", "No se pudo generar el centralizador. Por favor, intente nuevamente.", "error");
+    }
+  };
+
+  // Manejar boletines
+  const handleBoletines = async (curso: any) => {
+    if (!selectedManagement) {
+      Swal.fire("Error", "No se pudo obtener la información de gestión necesaria", "error");
+      return;
+    }
+
+    Swal.fire({
+      title: "Generando boletines...",
+      text: `Preparando PDFs individuales para ${curso.course} ${curso.parallel}`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      await getBoletinesReport(
+        curso.courseId.toString(),
+        selectedManagement.toString()
+      );
+
+      Swal.close();
+      Swal.fire({
+        icon: "success",
+        title: "Boletines Descargados",
+        text: `Los boletines para el curso ${curso.course} ${curso.parallel} se están descargando`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Error al generar los boletines:', error);
+      Swal.close();
+      Swal.fire("Error", "No se pudo generar los boletines. Por favor, intente nuevamente.", "error");
     }
   };
 
