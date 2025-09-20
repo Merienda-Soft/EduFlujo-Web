@@ -76,6 +76,12 @@ export default function ReportsPage() {
       return;
     }
 
+    // Verificar si es profesor técnico (is_tecnical = 1)
+    const isTechnicalProfessor = professor.is_tecnical === 1;
+    
+    // Determinar qué opciones mostrar
+    const showCentralizadorAndBoletines = !isTechnicalProfessor; // Solo mostrar si NO es técnico (is_tecnical = 0)
+
     const { value: reportType } = await Swal.fire({
       title: '<span style="color: #E5E7EB;">Opciones de Descarga</span>',
       html: `
@@ -83,7 +89,7 @@ export default function ReportsPage() {
           <div style="padding: 16px; border-bottom: 1px solid #4B5563;">
             <p style="color: #9CA3AF; font-size: 14px; margin: 0;">${curso.course} - Paralelo ${curso.parallel}</p>
           </div>
-          <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+          <div style="padding: 24px; display: grid; grid-template-columns: ${showCentralizadorAndBoletines ? '1fr 1fr 1fr' : '1fr'}; gap: 16px; justify-items: center;">
             <!-- Informe Trimestral -->
             <div class="report-option" data-value="informe-trimestral" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #1E40AF; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #1E3A8A; text-align: center;">
               <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #3B82F6; border-radius: 50%; margin-bottom: 12px;">
@@ -97,6 +103,7 @@ export default function ReportsPage() {
               </div>
             </div>
             
+            ${showCentralizadorAndBoletines ? `
             <!-- Centralizador -->
             <div class="report-option" data-value="centralizador" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #059669; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #065F46; text-align: center;">
               <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #10B981; border-radius: 50%; margin-bottom: 12px;">
@@ -122,6 +129,7 @@ export default function ReportsPage() {
                 <p style="color: #C4B5FD; font-size: 12px; margin: 0;">PDFs<br/>individuales</p>
               </div>
             </div>
+            ` : ''}
           </div>
         </div>
       `,
@@ -130,7 +138,7 @@ export default function ReportsPage() {
       cancelButtonText: 'Cancelar',
       showConfirmButton: false,
       buttonsStyling: false,
-      width: '600px',
+      width: showCentralizadorAndBoletines ? '600px' : '300px',
       customClass: {
         popup: 'swal2-dark-popup',
         cancelButton: 'swal2-dark-cancel-button',
@@ -186,9 +194,9 @@ export default function ReportsPage() {
     // Manejar cada tipo de reporte
     if (reportType === 'informe-trimestral') {
       await handleInformeTrimestral(curso);
-    } else if (reportType === 'centralizador') {
+    } else if (reportType === 'centralizador' && showCentralizadorAndBoletines) {
       await handleCentralizador(curso);
-    } else if (reportType === 'boletines') {
+    } else if (reportType === 'boletines' && showCentralizadorAndBoletines) {
       await handleBoletines(curso);
     }
   };
