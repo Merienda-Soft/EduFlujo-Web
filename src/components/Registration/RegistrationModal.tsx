@@ -219,13 +219,13 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
         lastname: '',
         second_lastname: '',
         name: '',
-        gender: '',
+        gender: 'M',
         datebirth: '',
         pais: '',
         departamento: '',
         provincia: '',
         localidad: '',
-        matricula: '',
+        matricula: 'EFECTIVO',
         isExisting: false
       }
     ]);
@@ -234,7 +234,19 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   const handleRegisterInscriptions = async () => {
     try {
       setIsLoading(true);
-      
+      const requiredFields: (keyof Student)[] = [
+        'rude', 'ci', 'lastname', 'second_lastname', 'name', 'gender', 'datebirth',
+        'pais', 'departamento', 'provincia', 'localidad', 'matricula'
+      ];
+      const missingFields = students.some(student =>
+        requiredFields.some(field => !student[field] || String(student[field]).trim() === '')
+      );
+      if (missingFields) {
+        setIsLoading(false);
+        Swal.fire('Todos los campos son requeridos', 'Por favor, complete todos los campos antes de registrar.', 'warning');
+        return;
+      }
+
       const studentsToUpdate = students.filter(s => s.isExisting);
       const studentsToCreate = students.filter(s => !s.isExisting);
 
@@ -267,7 +279,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
           dataAssignment: studentsToCreate.map(student => ({
             rude: student.rude,
             ci: student.ci,
-            name: joinFullName(student.lastname, student.second_lastname, student.name), // Concatenar aquí
+            name: joinFullName(student.lastname, student.second_lastname, student.name), 
             gender: student.gender,
             datebirth: student.datebirth,
             pais: student.pais,
@@ -316,7 +328,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
               </label>
               <button
                 onClick={handleAddRow}
-                className="p-2 bg-yellow-600 text-white rounded hover:bg-yellow-500 text-sm dark:bg-yellow-700 dark:hover:bg-yellow-600"
+                className="p-2 bg-yellow-600 text-black rounded hover:bg-yellow-500 text-sm dark:bg-yellow-700 dark:hover:bg-yellow-600 dark:text-white"
                 disabled={isLoading}
               >
                 <FontAwesomeIcon icon={faPlus} /> Agregar fila
@@ -418,13 +430,15 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <input
-                        type="text"
-                        className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
-                        value={student.gender}
+                      <select
+                        className={`w-full bg-transparent outline-none border-none focus:ring-2 focus:ring-blue-400 rounded text-sm ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'text-gray-900 dark:text-white'} dark:bg-gray-800`}
+                        value={student.gender || 'M'}
                         onChange={(e) => handleInputChange(index, 'gender', e.target.value)}
                         disabled={isLoading}
-                      />
+                      >
+                        <option value="M">M</option>
+                        <option value="F">F</option>
+                      </select>
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
                       <input
@@ -441,7 +455,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'pais', value)}
                         type="pais"
                         disabled={isLoading}
-                        placeholder="país..."
+                        placeholder="PAIS"
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -451,7 +465,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'departamento', value)}
                         type="departamento"
                         disabled={isLoading}
-                        placeholder="departamento..."
+                        placeholder="DEPARTAMENTO"
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -461,7 +475,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'provincia', value)}
                         type="provincia"
                         disabled={isLoading}
-                        placeholder="provincia..."
+                        placeholder="PROVINCIA"
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
@@ -471,19 +485,21 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
                         onChange={(value) => handleInputChange(index, 'localidad', value)}
                         type="localidad"
                         disabled={isLoading}
-                        placeholder="localidad..."
+                        placeholder="LOCALIDAD"
                         className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
                       />
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600">
-                      <AutocompleteInput
-                          value={student.matricula}
-                          onChange={(value) => handleInputChange(index, 'matricula', value)}
-                          type="matricula"
-                          disabled={isLoading}
-                          placeholder="matricula..."
-                          className={`w-full bg-transparent outline-none ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'dark:text-white'}`}
-                      />
+                      <select
+                        className={`w-full bg-transparent outline-none border-none focus:ring-2 focus:ring-blue-400 rounded text-sm ${student.isExisting ? 'text-green-800 dark:text-green-200' : 'text-gray-900 dark:text-white'} dark:bg-gray-800`}
+                        value={student.matricula || 'EFECTIVO'}
+                        onChange={(e) => handleInputChange(index, 'matricula', e.target.value)}
+                        disabled={isLoading}
+                      >
+                        <option value="EFECTIVO">EFECTIVO</option>
+                        <option value="TRASLADO">TRASLADO</option>
+                        <option value="RETIRADO">RETIRADO</option>
+                      </select>
                     </td>
                     <td className="p-2 border border-gray-300 dark:border-gray-600 text-center">
                       {!student.isExisting && (

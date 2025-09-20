@@ -55,7 +55,7 @@ const AcademicYear = () => {
       const data = await getYearManagements();
       setManagements(data);
       
-      const activeManagements = data.filter((m: Management) => m.status === 1);
+      const activeManagements = data.filter((m: Management) => m.status === 0);
       
       if (activeManagements.length > 0) {
         const mostRecent = activeManagements.sort((a, b) => 
@@ -65,7 +65,7 @@ const AcademicYear = () => {
         setSourceManagement(mostRecent);
         prefillFormDates(mostRecent);
       } else {
-        message.warning('No se encontraron gestiones académicas activas');
+        message.warning('No se encontraron gestiones académicas listas.');
       }
     } catch (error) {
       console.error('Error al obtener gestiones:', error);
@@ -168,12 +168,18 @@ const AcademicYear = () => {
     return (
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Card className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border-0">
-          <div className="text-center">
+          <div className="text-start">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-              Clonar Gestión Académica
+              No puedes crear una nueva gestión académica
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              No se encontraron gestiones académicas activas para clonar.
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
+              La gestión académica más reciente aún se encuentra activa. 
+              <br />
+              Para iniciar una nueva gestión con los datos correctos, primero debes cerrar la gestión actual.
+              <br />
+              <br />
+              Una vez que la gestión anterior esté cerrada, podrás crear una nueva sin problemas.
+              
             </p>
             <Button 
               type="primary" 

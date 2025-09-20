@@ -81,6 +81,22 @@ let menuData: Menu[] = [
     path: "/academic",
     roles: ['admin'],
     newTab: false,
+    submenu: [
+      {
+        id: 92,
+        title: "Clonar Gestion Academica",
+        path: "/academic",
+        newTab: false,
+        roles: ['admin']
+      },
+      {
+        id: 93,
+        title: "Cerrar Gestion",
+        path: "#",
+        newTab: false,
+        roles: ['admin']
+      }
+    ]
   },
   {
     id: 11,

@@ -70,7 +70,7 @@ export const getDegree = async () => {
     }
 };
 
-export const deleteManagement = async (id: string) => {
+export const deleteManagement = async (id: number) => {
     try {
         const currentUserId = getCurrentUserId();
         if (!currentUserId) {

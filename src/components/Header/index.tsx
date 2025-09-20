@@ -13,6 +13,8 @@ import { getManagementGlobal, subscribe, setManagementGlobal, initializeManageme
 import UserProfileModal from "../UserManagement/UserProfile";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPencilAlt } from '@fortawesome/free-solid-svg-icons';
+import Swal from 'sweetalert2';
+import { deleteManagement } from '../../utils/managementService';
 
 
 const Header = () => {
@@ -64,7 +66,6 @@ const Header = () => {
           console.error('Error inicializando userId:', error);
         }
       } else {
-        // Usuario no autenticado: limpiar datos
         clearUserData();
       }
     };
@@ -79,38 +80,80 @@ const Header = () => {
   };
 
   const handleLogout = () => {
-    // Limpiar datos del usuario del estado global
     clearUserData();
-    // Resetear el flag de inicialización para permitir nueva inicialización si es necesario
     resetInitialization();
     // Limpiar cookies
     destroyCookie(null, 'cookie_name', { path: '/' }); 
     destroyCookie(null, 'another_cookie_name', { path: '/' });
-    // Limpiar cookie de management global
     destroyCookie(null, 'managementGlobal', { path: '/' });
-    // Redirigir al logout de Auth0
     window.location.href = '/api/auth/logout';
   };
 
   const handleSubmenuSelect = (title: string) => {
-  const { allManagements } = getManagementGlobal();
-  const management = allManagements.find(m => 
-    m.management.toString() === title
-  );
-  
-  if (management) {
-    setManagementGlobal({
-      id: management.id,
-      year: management.management,
-      status: management.status,
-      currentManagement: management
-    });
+    const { allManagements } = getManagementGlobal();
+    const management = allManagements.find(m => 
+      m.management.toString() === title
+    );
     
-    window.dispatchEvent(new CustomEvent('management-changed', {
-      detail: { managementId: management.id }
-    }));
-  }
-};
+    if (management) {
+      setManagementGlobal({
+        id: management.id,
+        year: management.management,
+        status: management.status,
+        currentManagement: management
+      });
+      
+      window.dispatchEvent(new CustomEvent('management-changed', {
+        detail: { managementId: management.id }
+      }));
+    }
+  };
+
+  const handleCloseManagement = async () => {
+    const { year, id: managementId } = getManagementGlobal();
+    
+    if (!managementId) {
+      Swal.fire('Error', 'No hay gestión seleccionada', 'error');
+      return;
+    }
+
+    const { value: enteredYear } = await Swal.fire({
+      title: `¿Estás seguro de cerrar la gestión ${year}?`,
+      html: `
+        <p>Recuerda que una vez cerrada no se podrán realizar cambios ni modificaciones y se cerrará el proceso de evaluación.</p>
+        <p>Para confirmar, ingrese la gestión actual:</p>
+        <input id="yearInput" class="swal2-input" placeholder="${year}" min="2000" max="2100">
+        <p id="errorText" class="text-red-500 text-sm mt-2 hidden">Por favor ingrese la gestión a cerrar</p>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, cerrar gestión',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const inputValue = (document.getElementById('yearInput') as HTMLInputElement).value;
+        const errorElement = document.getElementById('errorText');
+        
+        if (!inputValue || parseInt(inputValue) !== year) {
+          errorElement?.classList.remove('hidden');
+          return false;
+        }
+        return inputValue;
+      }
+    });
+
+    if (enteredYear) {
+      try {
+        await deleteManagement(managementId);
+        Swal.fire('¡Éxito!', `Gestión ${year} cerrada correctamente`, 'success');
+        window.location.href = '/';
+      } catch (error) {
+        Swal.fire('Error', 'No se pudo cerrar la gestión', 'error');
+        console.error(error);
+      }
+    }
+  };
 
   const filteredMenuData = menuData.filter(menuItem => {
     if (!menuItem.roles) return true;
@@ -208,14 +251,24 @@ const Header = () => {
                                 {menuItem.submenu?.filter(subItem => 
                                   !subItem.roles || hasRole(subItem.roles)
                                 ).map((submenuItem) => (
-                                  <Link
-                                    key={submenuItem.id}
-                                    href={submenuItem.path}
-                                    className="block rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3"
+                                  submenuItem.title === "Cerrar Gestion" ? (
+                                    <button
+                                      key={submenuItem.id}
+                                      onClick={() => handleCloseManagement()}
+                                      className="block w-full text-left rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3"
+                                    >
+                                      {submenuItem.title}
+                                    </button>
+                                  ) : (
+                                    <Link
+                                      key={submenuItem.id}
+                                      href={submenuItem.path}
+                                      className="block rounded py-2.5 text-sm text-dark hover:text-primary dark:text-white/70 dark:hover:text-white lg:px-3"
                                     onClick={() => handleSubmenuSelect(submenuItem.title)}
-                                  >
-                                    {submenuItem.title}
-                                  </Link>
+                                    >
+                                      {submenuItem.title}
+                                    </Link>
+                                  )
                                 ))}
                               </div>
                             </>
