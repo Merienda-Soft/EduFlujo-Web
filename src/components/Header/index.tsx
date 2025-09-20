@@ -110,13 +110,17 @@ const Header = () => {
   };
 
   const handleCloseManagement = async () => {
-    const { year, id: managementId } = getManagementGlobal();
+    const { year, id: managementId, status } = getManagementGlobal();
+    console.log('Gestión actual a cerrar:', year, managementId, status);
     
     if (!managementId) {
-      Swal.fire('Error', 'No hay gestión seleccionada', 'error');
+      Swal.fire('Alerta', 'No hay gestión seleccionada', 'error');
       return;
     }
-
+    if (status == 0) {
+      Swal.fire('Alerta', 'No hay ninguna gestión activa', 'error');
+      return;
+    }
     const { value: enteredYear } = await Swal.fire({
       title: `¿Estás seguro de cerrar la gestión ${year}?`,
       html: `
