@@ -240,86 +240,95 @@ const AcademicYear = () => {
           </div>
         </div>
       ) : results ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-8">
-            <Result
-              title={<span className="dark:text-white">¡Gestión académica creada exitosamente!</span>}
-              subTitle={<span className="dark:text-gray-300">La nueva gestión académica {results.new_management_year} ha sido configurada con todos los elementos necesarios.</span>}
-              icon={<CheckCircleFilled style={{ color: '#52c41a', fontSize: '72px' }} />}
-              extra={[]}
-            />
+        (() => {
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
+          return (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+              <div className="p-8">
+                <Result
+                  title={<span className="dark:text-white">¡Gestión académica creada exitosamente!</span>}
+                  subTitle={<span className="dark:text-gray-300">La nueva gestión académica {results.new_management_year} ha sido configurada con todos los elementos necesarios.</span>}
+                  icon={<CheckCircleFilled style={{ color: '#52c41a', fontSize: '72px' }} />}
+                  extra={[]}
+                />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-              <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
-                <div className="flex items-center">
-                  <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-full mr-4">
-                    <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Cursos creados</p>
-                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_courses}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+                  <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                    <div className="flex items-center">
+                      <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-full mr-4">
+                        <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Cursos creados</p>
+                        <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_courses}</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm bg-gradient-to-r from-green-50 to-green-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                    <div className="flex items-center">
+                      <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full mr-4">
+                        <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Materias asignadas</p>
+                        <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_curricula}</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm bg-gradient-to-r from-purple-50 to-purple-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                    <div className="flex items-center">
+                      <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-full mr-4">
+                        <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Docentes asignados</p>
+                        <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_assignments}</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
+                    <div className="flex items-center">
+                      <div className="bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full mr-4">
+                        <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Estudiantes matriculados</p>
+                        <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_registrations}</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <div className="flex justify-center mt-8 col-span-full">
+                    <Button
+                      type="primary"
+                      key="home"
+                      onClick={() => {
+                        window.location.href = '/';
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      size="large"
+                    >
+                      Ir a Inicio
+                    </Button>
                   </div>
                 </div>
-              </Card>
-
-              <Card className="border-0 shadow-sm bg-gradient-to-r from-green-50 to-green-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
-                <div className="flex items-center">
-                  <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full mr-4">
-                    <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Materias asignadas</p>
-                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_curricula}</p>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="border-0 shadow-sm bg-gradient-to-r from-purple-50 to-purple-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
-                <div className="flex items-center">
-                  <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-full mr-4">
-                    <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Docentes asignados</p>
-                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_assignments}</p>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="border-0 shadow-sm bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-gray-700 dark:to-gray-800 dark:text-gray-300">
-                <div className="flex items-center">
-                  <div className="bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full mr-4">
-                    <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Estudiantes matriculados</p>
-                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{results.results.new_registrations}</p>
-                  </div>
-                </div>
-              </Card>
-
-              <div className="flex justify-center mt-8 col-span-full">
-                <Button
-                  type="primary" 
-                  key="home" 
-                  onClick={() => router.push('/')}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  size="large"
-                >
-                  Ir a Inicio
-                </Button>
               </div>
             </div>
-          </div>
-        </div>
+          );
+        })()
       ) : (
         <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-0 p-8">
           <Form
