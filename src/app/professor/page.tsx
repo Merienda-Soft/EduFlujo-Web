@@ -8,8 +8,11 @@ import Breadcrumb from '../../components/Common/Breadcrumb';
 import { getProfessorByEmail, getActivities } from '../../utils/tasksService';
 import { getYearManagements } from '../../utils/managementService';
 import { getManagementGlobal, setManagementGlobal, subscribe } from '../../utils/globalState';
+import { getStudentCredentials } from '../../utils/credentialsService';
 import Cookies from 'js-cookie';
-import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon, AcademicCapIcon, EyeIcon, EyeSlashIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
+import Link from 'next/link';
 
 // Iconos por materia
 const subjectIcons: Record<string, JSX.Element> = {
@@ -73,6 +76,11 @@ export default function ProfessorCoursesPage() {
     const currentMonth = new Date().getMonth();
     return new Date(getManagementGlobal()?.year || new Date().getFullYear(), currentMonth, 1);
   });
+  const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
+  const [credentialsData, setCredentialsData] = useState([]);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
+  const [credentialsError, setCredentialsError] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
 
   // Inicializar gestión activa desde cookie o globalState
   useEffect(() => {
@@ -158,6 +166,36 @@ export default function ProfessorCoursesPage() {
   const handleSubjectClick = (subjectId: number, courseId: number) => {
     if (!subjectId || !courseId) return;
     router.push(`/professor/tasks/${subjectId}?courseId=${Number(courseId)}`);
+  };
+
+  const openCredentialsModal = async (courseId: number) => {
+    setCredentialsModalOpen(true);
+    setLoadingCredentials(true);
+    setCredentialsError('');
+    try {
+      const data = await getStudentCredentials(selectedManagement, courseId);
+      setCredentialsData(data);
+    } catch (e) {
+      setCredentialsError('No se pudieron cargar las credenciales.');
+    } finally {
+      setLoadingCredentials(false);
+    }
+  };
+
+  const togglePasswordVisibility = (index: number) => {
+    setVisiblePasswords(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const copyPasswordToClipboard = async (password: string) => {
+    try {
+      await navigator.clipboard.writeText(password);
+      // Aquí podrías agregar un toast o notificación de éxito
+    } catch (err) {
+      console.error('Error al copiar la contraseña:', err);
+    }
   };
 
   const handlePrevMonth = () => {
@@ -283,7 +321,7 @@ export default function ProfessorCoursesPage() {
                           type="button"
                         >
                           <div className="w-full h-36 md:h-40 lg:h-44 bg-blue-100 dark:bg-blue-800 flex items-center justify-center overflow-hidden rounded-t-2xl">
-                            <img src="/images/cursos.jpg" alt="Curso" className="w-full h-full object-cover" />
+                             <Image src='/images/cursos.jpg' alt="Curso" className="w-full h-full object-cover" width={500} height={500}/>
                           </div>
                           <div className="flex-1 flex flex-col items-center justify-center p-4">
                             <span className="text-xl font-bold text-primary mb-1 text-center w-full truncate">{c.course}</span>
@@ -327,6 +365,7 @@ export default function ProfessorCoursesPage() {
                                   </li>
                                 ))}
                               </ul>
+                              <button className="w-full flex items-center justify-center px-4 py-2 mt-4 text-sm font-semibold text-blue-900 dark:text-blue-100 bg-blue-100 dark:bg-blue-800 rounded-lg shadow hover:bg-blue-200 dark:hover:bg-blue-700 transition" onClick={() => openCredentialsModal(c.courseId)}>Credenciales</button>
                             </div>
                           </div>
                         )}
@@ -486,6 +525,107 @@ export default function ProfessorCoursesPage() {
             </div>
           </div>
         )}
+
+        {/* Credentials Modal */}
+        {credentialsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="fixed inset-0 bg-black bg-opacity-30 dark:bg-opacity-50" />
+            <div className="relative w-full max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6">
+              <button
+                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-2xl font-bold focus:outline-none"
+                onClick={() => {
+                  setCredentialsModalOpen(false);
+                  setCredentialsData([]);
+                }}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+              
+              {/* Header */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Credenciales de Estudiantes</h2>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Gestión {managements.find(m => m.id === selectedManagement)?.management}
+                </p>
+              </div>
+
+              {/* Credentials List */}
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                {loadingCredentials ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-600 dark:text-gray-300">Cargando credenciales...</p>
+                  </div>
+                ) : credentialsError ? (
+                  <div className="text-red-500 text-center py-8">{credentialsError}</div>
+                ) : credentialsData.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    No hay credenciales disponibles
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-transparent border-collapse">
+                      <thead className="bg-gray-200 dark:bg-gray-700">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">
+                            Nombre Estudiante
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">
+                            Email
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">
+                            Contraseña
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">
+                            
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                        {credentialsData.map((cred, index) => (
+                          <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-transparent">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                              {cred.fullName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                              {cred.email}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 font-mono">
+                              {visiblePasswords[index] ? cred.temp_password : '••••••••'}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                              <div className="flex items-center justify-end">
+                                <button
+                                  onClick={() => togglePasswordVisibility(index)}
+                                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1 rounded"
+                                  title={visiblePasswords[index] ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                >
+                                  {visiblePasswords[index] ? (
+                                    <EyeSlashIcon className="h-6 w-6" />
+                                  ) : (
+                                    <EyeIcon className="h-6 w-6" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => copyPasswordToClipboard(cred.temp_password)}
+                                  className="pl-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1 rounded"
+                                  title="Copiar contraseña"
+                                >
+                                  <ClipboardDocumentIcon className="h-6 w-6" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <style jsx global>{`
 @keyframes fadeIn {
@@ -498,4 +638,4 @@ export default function ProfessorCoursesPage() {
 `}</style>
     </>
   );
-} 
+}
