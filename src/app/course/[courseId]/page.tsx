@@ -174,10 +174,10 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
       assignments.some(a => a.subject_id === curriculum.subject_id)
     );
   
-    /*if (!allSubjectsAssigned) {
+    if (!allSubjectsAssigned) {
       Swal.fire('Error', 'Debes asignar un profesor a todas las materias antes de guardar.', 'error');
       return;
-    }*/
+    }
     try {
       const isUpdate = existingAssignments.length > 0;
   
