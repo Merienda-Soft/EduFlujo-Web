@@ -21,6 +21,7 @@ const STATUS_COLORS = {
 };
 
 export default function StudentTasksPage() {
+  const managementGlobal = getManagementGlobal();
   const searchParams = useSearchParams();
   const params = useParams();
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function StudentTasksPage() {
       if (response.ok && response.data) {
         const transformedTasks = response.data.map((task) => ({
           ...task,
-          createDate: new Date(task.created_at),
+          createDate: new Date(task.end_date),
           status: task.assignments?.[0]?.status ?? 0,
         }));
         setTasks(transformedTasks);
@@ -91,23 +92,34 @@ export default function StudentTasksPage() {
     }
   }, [fetchTasks, selectedManagement]);
 
-  const handlePrevMonth = useCallback(() => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      return newDate;
-    });
-    setCurrentPage(1);
-  }, []);
+  useEffect(() => {
+      const currentMonth = new Date().getMonth();
+      setCurrentDate(new Date(managementGlobal?.year || new Date().getFullYear(), currentMonth, 1));
+    }, [selectedManagement]);
 
-  const handleNextMonth = useCallback(() => {
-    setCurrentDate((prev) => {
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
       const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
+      if (newDate.getMonth() === 0) {
+        newDate.setMonth(11);
+      } else {
+        newDate.setMonth(prev.getMonth() - 1);
+      }
       return newDate;
     });
-    setCurrentPage(1);
-  }, []);
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (newDate.getMonth() === 11) {
+        newDate.setMonth(0);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
