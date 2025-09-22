@@ -56,6 +56,145 @@ type Course = {
   curriculums: Curriculum[];
 };
 
+// Componente de Paginación
+const Pagination = ({ 
+  currentPage, 
+  totalPages, 
+  onPageChange 
+}: { 
+  currentPage: number; 
+  totalPages: number; 
+  onPageChange: (page: number) => void;
+}) => {
+  const pages = [];
+  const maxVisiblePages = 3;
+  
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  return (
+    <div className="flex justify-center items-center space-x-1 mt-4">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
+      >
+        ←
+      </button>
+      
+      {startPage > 1 && (
+        <>
+          <button
+            onClick={() => onPageChange(1)}
+            className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+          >
+            1
+          </button>
+          {startPage > 2 && <span className="px-2">...</span>}
+        </>
+      )}
+      
+      {pages.map(page => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`px-3 py-1 rounded ${
+            currentPage === page 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+      
+      {endPage < totalPages && (
+        <>
+          {endPage < totalPages - 1 && <span className="px-2">...</span>}
+          <button
+            onClick={() => onPageChange(totalPages)}
+            className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+          >
+            {totalPages}
+          </button>
+        </>
+      )}
+      
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
+      >
+        →
+      </button>
+    </div>
+  );
+};
+
+// Componente de Lista de Profesores con Búsqueda y Paginación
+const ProfessorList = ({ 
+  professors, 
+  title 
+}: { 
+  professors: Professor[]; 
+  title: string;
+}) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 2; // Cambiado de 3 a 2 por página
+
+  // Calcular paginación
+  const totalPages = Math.ceil(professors.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProfessors = professors.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Resetear página cuando cambia la lista de profesores
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [professors.length]);
+
+  return (
+    <div className="mb-8">
+      <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">{title}</h4>
+      
+      {/* Lista de profesores */}
+      <div className="bg-white dark:bg-gray-900 rounded min-h-[200px]">
+        {paginatedProfessors.length > 0 ? (
+          <>
+            {paginatedProfessors.map(professor => (
+              <ProfessorItem key={professor.id} professor={professor} />
+            ))}
+            
+            {/* Paginación */}
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
+          </>
+        ) : (
+          <div className="flex items-center justify-center min-h-[200px] text-gray-500 dark:text-gray-400">
+            No hay profesores disponibles
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const CourseDetails = ({ params }: { params: { courseId: number } }) => {
   const { courseId } = params;
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
@@ -66,6 +205,7 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
   const [error, setError] = useState('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [existingAssignments, setExistingAssignments] = useState<Assignment[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -105,6 +245,26 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Filtrar profesores por término de búsqueda
+  const filteredProfessors = {
+    regular: professors.filter(professor => 
+      professor.is_tecnical === 0 && (
+        professor.person.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        professor.subjects.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    ),
+    technical: professors.filter(professor => 
+      professor.is_tecnical === 1 && (
+        professor.person.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        professor.subjects.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    )
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
   const handleDrop = (subjectId: number, professorId: number) => {
     const professor = professors.find(p => p.id === professorId);
@@ -174,15 +334,16 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
       assignments.some(a => a.subject_id === curriculum.subject_id)
     );
   
+    // VALIDACIÓN IMPORTANTE REACTIVADA
     if (!allSubjectsAssigned) {
       Swal.fire('Error', 'Debes asignar un profesor a todas las materias antes de guardar.', 'error');
       return;
     }
+
     try {
       const isUpdate = existingAssignments.length > 0;
   
       if (isUpdate) {
-        // Prepare updates for existing assignments
         const updates = assignments
           .filter(newAssignment => {
             const oldAssignment = existingAssignments.find(
@@ -203,8 +364,6 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
         await updateAsignacion(updates);
         Swal.fire('Éxito', 'Asignaciones actualizadas con éxito', 'success');
       } else {
-
-        // Create new assignments
         const newAssignments = assignments.map(assignment => ({
           subject_id: assignment.subject_id,
           professor_id: assignment.professor_id,
@@ -233,10 +392,6 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
       full_name: professor.person.full_name,
       is_tecnical: professor.is_tecnical
     } : null;
-  };
-
-  const getFilteredProfessors = (isTechnical: number) => {
-    return professors.filter(prof => prof.is_tecnical === isTechnical);
   };
 
   return (
@@ -272,78 +427,84 @@ const CourseDetails = ({ params }: { params: { courseId: number } }) => {
               </div>
               
               <div className="flex space-x-10">
-              <div className="w-2/3">
-                <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Materias</h3>
-                
-                {/* Materias Regulares */}
-                <div className="mb-3">
-                  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Regulares</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {course.curriculums
-                      .filter(curriculum => {
-                        const subject = subjects.find(s => s.id === curriculum.subject_id);
-                        return subject?.is_tecnical === 0;
-                      })
-                      .map(curriculum => {
-                        const subject = subjects.find(s => s.id === curriculum.subject_id);
-                        return subject ? (
-                          <SubjectItem
-                            key={curriculum.id}
-                            subject={subject}
-                            professor={getAssignedProfessor(subject.id)}
-                            onDrop={handleDrop}
-                          />
-                        ) : null;
-                      })}
+                <div className="w-2/3">
+                  <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Materias</h3>
+                  
+                  {/* Materias Regulares */}
+                  <div className="mb-3">
+                    <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Regulares</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {course.curriculums
+                        .filter(curriculum => {
+                          const subject = subjects.find(s => s.id === curriculum.subject_id);
+                          return subject?.is_tecnical === 0;
+                        })
+                        .map(curriculum => {
+                          const subject = subjects.find(s => s.id === curriculum.subject_id);
+                          return subject ? (
+                            <SubjectItem
+                              key={curriculum.id}
+                              subject={subject}
+                              professor={getAssignedProfessor(subject.id)}
+                              onDrop={handleDrop}
+                            />
+                          ) : null;
+                        })}
+                    </div>
+                  </div>
+                  
+                  {/* Materias Técnicas */}
+                  <div>
+                    <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Técnicas</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {course.curriculums
+                        .filter(curriculum => {
+                          const subject = subjects.find(s => s.id === curriculum.subject_id);
+                          return subject?.is_tecnical === 1;
+                        })
+                        .map(curriculum => {
+                          const subject = subjects.find(s => s.id === curriculum.subject_id);
+                          return subject ? (
+                            <SubjectItem
+                              key={curriculum.id}
+                              subject={subject}
+                              professor={getAssignedProfessor(subject.id)}
+                              onDrop={handleDrop}
+                            />
+                          ) : null;
+                        })}
+                    </div>
                   </div>
                 </div>
-                
-                {/* Materias Técnicas */}
-                <div>
-                  <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Materias Técnicas</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {course.curriculums
-                      .filter(curriculum => {
-                        const subject = subjects.find(s => s.id === curriculum.subject_id);
-                        return subject?.is_tecnical === 1;
-                      })
-                      .map(curriculum => {
-                        const subject = subjects.find(s => s.id === curriculum.subject_id);
-                        return subject ? (
-                          <SubjectItem
-                            key={curriculum.id}
-                            subject={subject}
-                            professor={getAssignedProfessor(subject.id)}
-                            onDrop={handleDrop}
-                          />
-                        ) : null;
-                      })}
-                  </div>
-                </div>
-              </div>
                 
                 <div className="w-1/3">
                   <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Docentes</h3>
                   
-                  <div className="mb-8">
-                    <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Profesores Regulares</h4>
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded shadow-lg border border-gray-200 dark:border-gray-600">
-                      {getFilteredProfessors(0).map(professor => (
-                        <ProfessorItem key={professor.id} professor={professor} />
-                      ))}
-                    </div>
+                  {/* Buscador único para ambos tipos de profesores */}
+                  <div className="mb-6">
+                    <input
+                      type="text"
+                      placeholder="Buscar profesores por nombre o materias..."
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   
-                  <div>
-                    <h4 className="font-semibold mb-3 text-gray-700 dark:text-gray-300">Profesores Técnicos</h4>
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded shadow-lg border border-gray-200 dark:border-gray-600">
-                      {getFilteredProfessors(1).map(professor => (
-                        <ProfessorItem key={professor.id} professor={professor} />
-                      ))}
-                    </div>
-                  </div>
+                  {/* Lista de Profesores Regulares */}
+                  <ProfessorList
+                    professors={filteredProfessors.regular}
+                    title="Profesores Regulares"
+                  />
+                  
+                  {/* Lista de Profesores Técnicos */}
+                  <ProfessorList
+                    professors={filteredProfessors.technical}
+                    title="Profesores Técnicos"
+                  />
                 </div>
               </div>
+              
               {isCurrentManagementActive() && (
                 <button
                   onClick={saveAssignments}
