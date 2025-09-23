@@ -39,8 +39,8 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
       const fetchMaterias = async () => {
         try {
           const materias = await getMaterias();
-          setAvailableMaterias(materias);
-          setSelectedMaterias([]);
+          setAvailableMaterias([]);
+          setSelectedMaterias(materias);
         } catch (err) {
           setError('Error al cargar las materias');
           console.error('Error fetching materias:', err);
