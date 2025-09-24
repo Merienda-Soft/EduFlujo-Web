@@ -27,61 +27,68 @@ export default function EvaluationToolViewer({
   useEffect(() => {
     if (!methodology) return;
 
-    const methodologyData = methodology.methodology;
+    let methodologyData = methodology.methodology;
+    
+    // Parsear si es string
+    if (typeof methodologyData === 'string') {
+      try {
+        methodologyData = JSON.parse(methodologyData);
+      } catch (error) {
+        console.error('Error parsing methodology data:', error);
+        return;
+      }
+    }
     
     if (methodology.type === EvaluationToolType.CHECKLIST) {
       const checklist = methodologyData as ChecklistData;
-      const initialChecked = checklist.items.map(item => item.checked || false);
-      setCheckedItems(initialChecked);
-      setCurrentMethodology(checklist);
+      if (checklist && checklist.items) {
+        const initialChecked = checklist.items.map(item => item.checked || false);
+        setCheckedItems(initialChecked);
+        setCurrentMethodology(checklist);
+      }
     } else if (methodology.type === EvaluationToolType.RUBRIC) {
       const rubric = methodologyData as RubricData;
-      const initialSelected = rubric.criteria.map((criterion, i) => ({
-        criterionIndex: i,
-        levelIndex: criterion.selected || 0
-      }));
-      setSelectedLevels(initialSelected);
-      setCurrentMethodology(rubric);
+
+      if (rubric && rubric.criteria) {
+        const initialSelected = rubric.criteria.map((criterion, i) => ({
+          criterionIndex: i,
+          levelIndex: criterion.selected || 0
+        }));
+        setSelectedLevels(initialSelected);
+        setCurrentMethodology(rubric);
+      }
     } else if (methodology.type === EvaluationToolType.AUTO_EVALUATION) {
       const autoEvaluation = methodologyData as AutoEvaluationBuilderData;
-      setAutoEvaluationState(autoEvaluation);
-      setCurrentMethodology(autoEvaluation);
+      if (autoEvaluation) {
+        setAutoEvaluationState(autoEvaluation);
+        setCurrentMethodology(autoEvaluation);
+      }
     }
   }, [methodology?.type]);
 
   useEffect(() => {
-    if (!methodology?.methodology) return;
+    if (!methodology?.methodology || methodology.type !== EvaluationToolType.CHECKLIST) return;
     
-    const methodologyData = methodology.methodology;
+    let methodologyData = methodology.methodology;
     
-    if (methodology.type === EvaluationToolType.CHECKLIST) {
-      const checklist = methodologyData as ChecklistData;
+    // Parsear si es string
+    if (typeof methodologyData === 'string') {
+      try {
+        methodologyData = JSON.parse(methodologyData);
+      } catch (error) {
+        console.error('Error parsing methodology data:', error);
+        return;
+      }
+    }
+    
+    const checklist = methodologyData as ChecklistData;
+    if (checklist && checklist.items) {
       const newChecked = checklist.items.map(item => item.checked || false);
       
       const hasChanges = newChecked.some((checked, index) => checked !== checkedItems[index]);
       if (hasChanges) {
         setCheckedItems(newChecked);
         setCurrentMethodology(checklist);
-      }
-    } else if (methodology.type === EvaluationToolType.RUBRIC) {
-      const rubric = methodologyData as RubricData;
-      const newSelected = rubric.criteria.map((criterion, i) => ({
-        criterionIndex: i,
-        levelIndex: criterion.selected || 0
-      }));
-      
-      const hasChanges = newSelected.some((sel, index) => 
-        sel.levelIndex !== selectedLevels[index]?.levelIndex
-      );
-      if (hasChanges) {
-        setSelectedLevels(newSelected);
-        setCurrentMethodology(rubric);
-      }
-    } else if (methodology.type === EvaluationToolType.AUTO_EVALUATION) {
-      const autoEvaluation = methodologyData as AutoEvaluationBuilderData;
-      if (JSON.stringify(autoEvaluation) !== JSON.stringify(autoEvaluationState)) {
-        setAutoEvaluationState(autoEvaluation);
-        setCurrentMethodology(autoEvaluation);
       }
     }
   }, [methodology?.methodology]); 
