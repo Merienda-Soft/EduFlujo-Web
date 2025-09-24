@@ -27,6 +27,17 @@ export default function StudentEvaluationView({
     );
   }
 
+  // Parsear methodology si es string
+  let parsedMethodology = methodology.methodology;
+  if (typeof parsedMethodology === 'string') {
+    try {
+      parsedMethodology = JSON.parse(parsedMethodology);
+    } catch (error) {
+      console.error('Error parsing methodology:', error);
+      parsedMethodology = null;
+    }
+  }
+
   const toggleExpand = () => setIsExpanded(!isExpanded);
 
   const renderPreview = () => {
@@ -41,12 +52,12 @@ export default function StudentEvaluationView({
       >
         <div>
           <h3 className="text-md font-semibold text-gray-900 dark:text-white">
-            {methodology.methodology.title || typeName}
+            {parsedMethodology?.title || typeName}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {methodology.type === EvaluationToolType.CHECKLIST
-              ? `${methodology.methodology.items.length} ítems de evaluación`
-              : `${methodology.methodology.criteria.length} criterios de evaluación`}
+              ? `${parsedMethodology?.items?.length || 0} ítems de evaluación`
+              : `${parsedMethodology?.criteria?.length || 0} criterios de evaluación`}
           </p>
         </div>
         {isExpanded ? (
@@ -59,7 +70,7 @@ export default function StudentEvaluationView({
   };
 
   const renderChecklistDetails = () => {
-    const { items } = methodology.methodology;
+    const { items } = parsedMethodology;
 
     return (
       <div className="mt-4 space-y-3">
@@ -102,7 +113,7 @@ export default function StudentEvaluationView({
   };
 
   const renderRubricDetails = () => {
-    const { criteria } = methodology.methodology;
+    const { criteria } = parsedMethodology;
 
     return (
       <div className="mt-4 space-y-4">
