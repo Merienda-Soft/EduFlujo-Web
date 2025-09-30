@@ -190,6 +190,14 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
   };
 
   const handleInputChange = (index: number, field: keyof Student, value: string) => {
+    if (field === 'rude') {
+      const rudeExists = students.some((s, i) => i !== index && s.rude.trim() === value.trim()) ||
+        existingStudents.some((s) => s.rude.trim() === value.trim());
+      if (rudeExists) {
+        Swal.fire('El RUDE es un registro único para cada estudiante. Revise los datos de estudiantes.', '', 'warning');
+        return;
+      }
+    }
     const updated = [...students];
     updated[index] = {
       ...updated[index],
@@ -205,9 +213,21 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ show, onClose, co
       return;
     }
 
-    const updated = [...students];
-    updated.splice(index, 1);
-    setStudents(updated);
+    Swal.fire({
+      title: '¿Está seguro de querer eliminar el registro de estudiante?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const updated = [...students];
+        updated.splice(index, 1);
+        setStudents(updated);
+      }
+    });
   };
 
   const handleAddRow = () => {
