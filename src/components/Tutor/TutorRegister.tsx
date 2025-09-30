@@ -1,23 +1,9 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { validateDocument, createTutorWithTutorship, getStudentsRudeOrCi } from '../../utils/tutorshipService';
+import { validateDocument, createTutorWithTutorship, getStudentsRudeOrCi, DocumentExtraction } from '../../utils/tutorshipService';
 import { uploadTutorDocuments } from '../../utils/firebaseService';
-import { locationData } from '../AutoComplete/locationData';
 import Swal from 'sweetalert2';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface DocumentValidationResult {
-  success: boolean;
-  is_valid: boolean;
-  data: {
-    raw_texts: {
-      front: string | null;  
-      back: string | null;  
-    };
-  };
-  details?: any;
-  error: string;
-}
 
 interface StudentData {
   rude: string;
@@ -25,120 +11,6 @@ interface StudentData {
   relacion: string;
   id?: number;
 }
-
-// Función para corregir errores de OCR en ubicaciones
-const correctLocationData = (input: string, type: 'departamento' | 'provincia' | 'localidad'): string => {
-  if (!input || input.trim() === '') return '';
-  
-  const cleanInput = input.trim().toUpperCase();
-  const validData = locationData[type];
-  
-  if (validData.includes(cleanInput)) {
-    return cleanInput;
-  }
-  
-  let bestMatch = '';
-  let bestScore = 0;
-  
-  for (const validLocation of validData) {
-    const similarity = calculateSimilarity(cleanInput, validLocation);
-    if (similarity > bestScore && similarity > 0.7) { // 70% de similitud mínima
-      bestScore = similarity;
-      bestMatch = validLocation;
-    }
-  }
-  
-  return bestMatch || cleanInput;
-};
-
-const calculateSimilarity = (str1: string, str2: string): number => {
-  const longer = str1.length > str2.length ? str1 : str2;
-  const shorter = str1.length > str2.length ? str2 : str1;
-  
-  if (longer.length === 0) return 1.0;
-  
-  const distance = levenshteinDistance(longer, shorter);
-  return (longer.length - distance) / longer.length;
-};
-
-const levenshteinDistance = (str1: string, str2: string): number => {
-  const matrix = [];
-  
-  for (let i = 0; i <= str2.length; i++) {
-    matrix[i] = [i];
-  }
-  
-  for (let j = 0; j <= str1.length; j++) {
-    matrix[0][j] = j;
-  }
-  
-  for (let i = 1; i <= str2.length; i++) {
-    for (let j = 1; j <= str1.length; j++) {
-      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  
-  return matrix[str2.length][str1.length];
-};
-
-const extractDocumentData = (rawTexts: {front: string | null, back: string | null}) => {
-  const result: any = {};
-  
-  if (rawTexts.back) {
-    const nameMatch = rawTexts.back.match(/A: ([A-ZÑ ]+) fl/);
-    if (nameMatch) {
-      const fullName = nameMatch[1].trim();
-      const nameParts = fullName.split(' ');
-      result.name = nameParts.slice(0, -2).join(' '); 
-      result.lastname = nameParts[nameParts.length - 2];
-      result.second_lastname = nameParts[nameParts.length - 1]; 
-    }
-
-    const birthDateMatch = rawTexts.back.match(/Nacido el (\d+ de \w+ de \d{4})/);
-    if (birthDateMatch) {
-      const spanishDate = birthDateMatch[1];
-      const months: {[key: string]: string} = {
-        'Enero': '01', 'Febrero': '02', 'Marzo': '03', 'Abril': '04',
-        'Mayo': '05', 'Junio': '06', 'Julio': '07', 'Agosto': '08',
-        'Septiembre': '09', 'Octubre': '10', 'Noviembre': '11', 'Diciembre': '12'
-      };
-      
-      const parts = spanishDate.split(' de ');
-      if (parts.length === 3) {
-        const day = parts[0].padStart(2, '0');
-        const month = months[parts[1]] || '01';
-        const year = parts[2];
-        result.birth_date = `${year}-${month}-${day}`;
-      }
-    }
-
-    const ciMatch = rawTexts.front?.match(/No (\d{7})/);
-    if (ciMatch) {
-      result.ci = ciMatch[1];
-    }
-
-    const locationMatch = rawTexts.back.match(/-En ([A-Z ]+) - ([A-Z ]+) -([A-Z ]+)\. gb/);
-    if (locationMatch) {
-      const rawDepartamento = locationMatch[1].trim();
-      const rawProvincia = locationMatch[2].trim();
-      const rawLocalidad = locationMatch[3].trim();
-      
-      result.departamento = correctLocationData(rawDepartamento, 'departamento');
-      result.provincia = correctLocationData(rawProvincia, 'provincia');
-      result.localidad = correctLocationData(rawLocalidad, 'localidad');
-    }
-  }
-
-  return result;
-};
 
 const TutorRegister = () => {
   const [tutorData, setTutorData] = useState({
@@ -149,7 +21,7 @@ const TutorRegister = () => {
     ci: '',
     birth_date: '',
     email: '',
-    pais: 'BOLIVIA',
+    pais: '',
     departamento: '',
     provincia: '',
     localidad: '',
@@ -161,7 +33,7 @@ const TutorRegister = () => {
   const [backImage, setBackImage] = useState<File | null>(null);
   const [frontPreview, setFrontPreview] = useState<string>('');
   const [backPreview, setBackPreview] = useState<string>('');
-  const [validationResult, setValidationResult] = useState<DocumentValidationResult | null>(null);
+  const [validationResult, setValidationResult] = useState<DocumentExtraction | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [currentStep, setCurrentStep] = useState<'validation' | 'form'>('validation');
@@ -172,12 +44,10 @@ const TutorRegister = () => {
   const backInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (validationResult?.is_valid && validationResult.data?.raw_texts) {
-      const extractedData = extractDocumentData(validationResult.data.raw_texts);
+    if (validationResult?.is_valid && validationResult.extractedData) {
       setTutorData(prev => ({
         ...prev,
-        ...extractedData,
-        pais: 'BOLIVIA' 
+        ...validationResult.extractedData,
       }));
     }
   }, [validationResult]);
@@ -241,24 +111,22 @@ const TutorRegister = () => {
   };
 
   const validateDocuments = async () => {
-    if (!frontImage || !backImage) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Imágenes faltantes',
-        text: 'Debes subir ambas imágenes (anverso y reverso) del documento',
-      });
-      return;
-    }
+  if (!frontImage || !backImage) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Imágenes faltantes',
+      text: 'Debes subir ambas imágenes (anverso y reverso) del documento',
+    });
+    return;
+  }
 
-    try {
-      setIsValidating(true);
-      
-      const result = await validateDocument(frontImage, backImage);
-      
-      if (result.success) {
-        setValidationResult(result);
-        if (result.is_valid) {
-          setCurrentStep('form');
+  try {
+    setIsValidating(true);
+    const result = await validateDocument(frontImage, backImage);
+    if (result.success) {
+      setValidationResult(result);
+      if (result.is_valid) {
+        setCurrentStep('form');
         } else {
           const frontScore = result.data?.validation_scores?.front?.['documento de identidad'] || 0;
           const backScore = result.data?.validation_scores?.back?.['documento de identidad'] || 0;
