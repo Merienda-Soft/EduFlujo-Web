@@ -74,3 +74,36 @@ export const getBoletinesReport = async (courseId: string, managementId: string)
         throw error;
     }
 };
+
+export const getLibroPedagogicoReport = async (courseId: string, professorId: string, managementId: string, month: string) => {
+    try {
+        const { url, config } = httpRequestFactory.createRequest(
+            `/reports/libro-pedagogico/course/${courseId}/professor/${professorId}/management/${managementId}/month/${month}`
+        );
+        const response = await fetch(url, config);
+        
+        if (!response.ok) {
+            throw new Error(`Error al obtener el libro pedagógico: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.ok) {
+            throw new Error(data.message || 'Error al obtener el libro pedagógico');
+        }
+
+        // Función auxiliar para abrir enlace de descarga
+        const openDownloadLink = (url: string) => {
+            window.open(url, '_blank');
+        };
+
+        // Manejar la respuesta del libro pedagógico
+        if (data.data?.url) {
+            openDownloadLink(data.data.url);
+        }
+        
+        return { success: true, data: data };
+    } catch (error) {
+        console.error('Error en getLibroPedagogicoReport:', error);
+        throw error;
+    }
+};

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Breadcrumb from '../../../components/Common/Breadcrumb';
 import { getCurrentManagementData, isCurrentManagementActive, getManagementGlobal, subscribe } from '../../../utils/globalState';
 import { getProfessorByEmail, getTasksReportByCourse } from '../../../utils/tasksService';
-import { getCentralizadorReport, getBoletinesReport } from '../../../utils/reportsService';
+import { getCentralizadorReport, getBoletinesReport, getLibroPedagogicoReport } from '../../../utils/reportsService';
 import Swal from 'sweetalert2';
 
 export default function ReportsPage() {
@@ -85,13 +85,13 @@ export default function ReportsPage() {
     const { value: reportType } = await Swal.fire({
       title: '<span style="color: #E5E7EB;">Opciones de Descarga</span>',
       html: `
-        <div style="background: #374151; border-radius: 8px; padding: 0;">
+        <div style=" border-radius: 8px; padding: 0;">
           <div style="padding: 16px; border-bottom: 1px solid #4B5563;">
-            <p style="color: #9CA3AF; font-size: 14px; margin: 0;">${curso.course} - Paralelo ${curso.parallel}</p>
+            <p style="color: #9CA3AF; font-size: 14px; margin: 0;">${curso.course.split(' ')[0]} - Paralelo ${curso.parallel}</p>
           </div>
-          <div style="padding: 24px; display: grid; grid-template-columns: ${showCentralizadorAndBoletines ? '1fr 1fr 1fr' : '1fr'}; gap: 16px; justify-items: center;">
+          <div style="padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; justify-items: center;">
             <!-- Informe Trimestral -->
-            <div class="report-option" data-value="informe-trimestral" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #1E40AF; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #1E3A8A; text-align: center;">
+            <div class="report-option" data-value="informe-trimestral" style="display: flex; flex-direction: column; align-items: center; padding: 20px 20px; border: 2px solid #1E40AF; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #1E3A8A; text-align: center; width: 100%;">
               <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #3B82F6; border-radius: 50%; margin-bottom: 12px;">
                 <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
@@ -105,7 +105,7 @@ export default function ReportsPage() {
             
             ${showCentralizadorAndBoletines ? `
             <!-- Centralizador -->
-            <div class="report-option" data-value="centralizador" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #059669; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #065F46; text-align: center;">
+            <div class="report-option" data-value="centralizador" style="display: flex; flex-direction: column; align-items: center; padding: 20px 20px; border: 2px solid #059669; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #065F46; text-align: center; width: 100%;">
               <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #10B981; border-radius: 50%; margin-bottom: 12px;">
                 <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z"></path>
@@ -118,7 +118,7 @@ export default function ReportsPage() {
             </div>
             
             <!-- Boletines -->
-            <div class="report-option" data-value="boletines" style="display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border: 2px solid #7C3AED; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #581C87; text-align: center;">
+            <div class="report-option" data-value="boletines" style="display: flex; flex-direction: column; align-items: center; padding: 20px 20px; border: 2px solid #7C3AED; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #581C87; text-align: center; width: 100%;">
               <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #8B5CF6; border-radius: 50%; margin-bottom: 12px;">
                 <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -127,6 +127,19 @@ export default function ReportsPage() {
               <div>
                 <h3 style="color: white; font-weight: 600; margin: 0 0 4px 0; font-size: 16px;">Boletines</h3>
                 <p style="color: #C4B5FD; font-size: 12px; margin: 0;">PDFs<br/>individuales</p>
+              </div>
+            </div>
+
+            <!-- Libro Pedagógico -->
+            <div class="report-option" data-value="libro-pedagogico" style="display: flex; flex-direction: column; align-items: center; padding: 20px 20px; border: 2px solid #DC2626; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; background: #991B1B; text-align: center; width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #EF4444; border-radius: 50%; margin-bottom: 12px;">
+                <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 style="color: white; font-weight: 600; margin: 0 0 4px 0; font-size: 16px;">Cuaderno<br/>Pedagógico</h3>
+                <p style="color: #FCA5A5; font-size: 12px; margin: 0;">Excel mensual<br/>detallado</p>
               </div>
             </div>
             ` : ''}
@@ -198,6 +211,8 @@ export default function ReportsPage() {
       await handleCentralizador(curso);
     } else if (reportType === 'boletines' && showCentralizadorAndBoletines) {
       await handleBoletines(curso);
+    } else if (reportType === 'libro-pedagogico') {
+      await handleLibroPedagogico(curso);
     }
   };
 
@@ -243,7 +258,7 @@ export default function ReportsPage() {
       Swal.fire({
         icon: "success",
         title: "Reporte Descargado",
-        text: `El reporte del ${quarter}° trimestre para el curso ${curso.course} ${curso.parallel} se está descargando`,
+        text: `El reporte del ${quarter}° trimestre para el curso ${curso.course.split(' ')[0]} ${curso.parallel} se está descargando`,
         timer: 2000,
         showConfirmButton: false
       });
@@ -263,7 +278,7 @@ export default function ReportsPage() {
 
     Swal.fire({
       title: "Generando centralizador...",
-      text: `Preparando Excel anual completo para ${curso.course} ${curso.parallel}`,
+      text: `Preparando Excel anual completo para ${curso.course.split(' ')[0]} ${curso.parallel}`,
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
     });
@@ -278,7 +293,7 @@ export default function ReportsPage() {
       Swal.fire({
         icon: "success",
         title: "Centralizador Descargado",
-        text: `El centralizador para el curso ${curso.course} ${curso.parallel} se está descargando`,
+        text: `El centralizador para el curso ${curso.course.split(' ')[0]} ${curso.parallel} se está descargando`,
         timer: 2000,
         showConfirmButton: false
       });
@@ -298,7 +313,7 @@ export default function ReportsPage() {
 
     Swal.fire({
       title: "Generando boletines...",
-      text: `Preparando PDFs individuales para ${curso.course} ${curso.parallel}`,
+      text: `Preparando PDFs individuales para ${curso.course.split(' ')[0]} ${curso.parallel}`,
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
     });
@@ -313,7 +328,7 @@ export default function ReportsPage() {
       Swal.fire({
         icon: "success",
         title: "Boletines Descargados",
-        text: `Los boletines para el curso ${curso.course} ${curso.parallel} se están descargando`,
+        text: `Los boletines para el curso ${curso.course.split(' ')[0]} ${curso.parallel} se están descargando`,
         timer: 2000,
         showConfirmButton: false
       });
@@ -321,6 +336,72 @@ export default function ReportsPage() {
       console.error('Error al generar los boletines:', error);
       Swal.close();
       Swal.fire("Error", "No se pudo generar los boletines. Por favor, intente nuevamente.", "error");
+    }
+  };
+
+  // Manejar libro pedagógico
+  const handleLibroPedagogico = async (curso: any) => {
+    if (!selectedManagement) {
+      Swal.fire("Error", "No se pudo obtener la información de gestión necesaria", "error");
+      return;
+    }
+
+    const { value: month } = await Swal.fire({
+      title: 'Seleccionar Mes',
+      input: 'select',
+      inputOptions: {
+        '2': 'Febrero',
+        '3': 'Marzo',
+        '4': 'Abril',
+        '5': 'Mayo',
+        '6': 'Junio',
+        '7': 'Julio',
+        '8': 'Agosto',
+        '9': 'Septiembre',
+        '10': 'Octubre',
+        '11': 'Noviembre',
+        '12': 'Diciembre'
+      },
+      inputPlaceholder: 'Selecciona un mes',
+      showCancelButton: true,
+      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Descargar',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Debes seleccionar un mes';
+        }
+      }
+    });
+
+    if (!month) return; // Si el usuario cancela
+
+    Swal.fire({
+      title: "Generando Cuaderno Pedagógico...",
+      text: `Preparando Excel mensual detallado para ${curso.course.split(' ')[0]} ${curso.parallel}`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      await getLibroPedagogicoReport(
+        curso.courseId.toString(),
+        professor.id.toString(),
+        selectedManagement.toString(),
+        month
+      );
+
+      Swal.close();
+      Swal.fire({
+        icon: "success",
+        title: "Libro Pedagógico Descargado",
+        text: `El libro pedagógico para el curso ${curso.course.split(' ')[0]} ${curso.parallel} se está descargando`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Error al generar el libro pedagógico:', error);
+      Swal.close();
+      Swal.fire("Error", "No se pudo generar el libro pedagógico. Por favor, intente nuevamente.", "error");
     }
   };
 
